@@ -29,6 +29,7 @@
     :filters="{ reference_doctype: 'CRM Deal', reference_docname: projectId }"
     :options="{
       allowedViews: ['list', 'kanban'],
+      defaultColumnField: 'nacifrah_stage',
     }"
   />
   <KanbanView
