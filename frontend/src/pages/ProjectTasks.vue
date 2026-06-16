@@ -129,6 +129,7 @@
     @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
   >
     <template #title="{ titleField, itemName }">
+      <div class="flex flex-col gap-1">
       <div class="flex items-center gap-2">
         <div v-if="titleField === 'status'">
           <TaskStatusIcon :status="getRow(itemName, titleField).label" />
@@ -160,6 +161,20 @@
           {{ getRow(itemName, titleField).label }}
         </div>
         <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
+      </div>
+      <div
+        v-if="metaFor(itemName).cl_total || metaFor(itemName).comments"
+        class="flex items-center gap-3 text-xs text-ink-gray-5"
+      >
+        <span v-if="metaFor(itemName).cl_total" class="flex items-center gap-1">
+          <FeatherIcon name="check-square" class="h-3 w-3" />
+          {{ metaFor(itemName).cl_done }}/{{ metaFor(itemName).cl_total }}
+        </span>
+        <span v-if="metaFor(itemName).comments" class="flex items-center gap-1">
+          <FeatherIcon name="message-circle" class="h-3 w-3" />
+          {{ metaFor(itemName).comments }}
+        </span>
+      </div>
       </div>
     </template>
     <template #fields="{ fieldName, itemName }">
@@ -302,8 +317,16 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
-import { Tooltip, Avatar, TextEditor, Dropdown, call, createResource } from 'frappe-ui'
-import { computed, ref } from 'vue'
+import {
+  Tooltip,
+  Avatar,
+  TextEditor,
+  Dropdown,
+  FeatherIcon,
+  call,
+  createResource,
+} from 'frappe-ui'
+import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
@@ -508,6 +531,27 @@ function parseRows(rows, columns = []) {
     })
     return _rows
   })
+}
+
+// Бейджи карточки: чек-лист x/y + счётчик комментариев (одним запросом на видимые задачи)
+const cardMeta = ref({})
+const taskNames = computed(() => (rows.value || []).map((r) => r.name).filter(Boolean))
+const cardMetaResource = createResource({
+  url: 'nacifrah.tasks_api.get_task_card_meta',
+  makeParams: () => ({ tasks: JSON.stringify(taskNames.value) }),
+  onSuccess(data) {
+    cardMeta.value = data || {}
+  },
+})
+watch(
+  taskNames,
+  (names) => {
+    if (names && names.length) cardMetaResource.reload()
+  },
+  { immediate: true },
+)
+function metaFor(name) {
+  return cardMeta.value[String(name)] || {}
 }
 
 const { showModal } = useDoctypeModal()
