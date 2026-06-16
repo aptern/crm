@@ -20,7 +20,7 @@ const routes = [
   },
   {
     alias: '/projects',
-    path: '/projects',
+    path: '/projects/view/:viewType?',
     name: 'Projects',
     component: () => import('@/pages/Projects.vue'),
   },
