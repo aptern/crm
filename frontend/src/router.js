@@ -189,6 +189,7 @@ router.beforeEach(async (to, from, next) => {
     [
       'Leads',
       'Deals',
+      'Projects',
       'Contacts',
       'Organizations',
       'Notes',
@@ -207,6 +208,7 @@ router.beforeEach(async (to, from, next) => {
       const doctypeMap = {
         Leads: 'CRM Lead',
         Deals: 'CRM Deal',
+        Projects: 'CRM Deal',
         Contacts: 'Contact',
         Organizations: 'CRM Organization',
         Notes: 'FCRM Note',
@@ -215,7 +217,10 @@ router.beforeEach(async (to, from, next) => {
       }
 
       const doctype = doctypeMap[to.name]
-      let defaultViewType = 'list'
+      // nacifrah: воронки и проекты по умолчанию открываются как Kanban
+      let defaultViewType = ['Leads', 'Deals', 'Projects'].includes(to.name)
+        ? 'kanban'
+        : 'list'
 
       let globalDefault = getDefaultView()
       if (globalDefault && globalDefault.route_name === to.name) {
