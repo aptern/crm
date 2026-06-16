@@ -22,7 +22,7 @@ const routes = [
     alias: '/projects',
     path: '/projects/view/:viewType?',
     name: 'Projects',
-    component: () => import('@/pages/Projects.vue'),
+    component: () => import('@/pages/ProjectTasks.vue'),
   },
   {
     path: '/project/:projectId/view/:viewType?',

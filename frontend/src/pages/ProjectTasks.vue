@@ -1,37 +1,85 @@
 <template>
-  <LayoutHeader>
-    <template #left-header>
-      <div class="flex items-center gap-2">
-        <Button variant="ghost" :label="__('← Проекты')" @click="router.push({ name: 'Projects' })" />
-        <ViewBreadcrumbs v-model="viewControls" routeName="Tasks" />
+  <div class="flex h-full overflow-hidden">
+    <!-- Левая панель: выбор проекта(ов) -->
+    <div class="flex w-60 shrink-0 flex-col border-r border-outline-gray-1 bg-surface-gray-1">
+      <div
+        class="flex h-12 shrink-0 items-center justify-between border-b border-outline-gray-1 px-3"
+      >
+        <span class="text-base font-semibold text-ink-gray-8">{{ __('Проекты') }}</span>
+        <span class="text-xs text-ink-gray-5"
+          >{{ selected.length }}/{{ projects.data?.length || 0 }}</span
+        >
       </div>
-    </template>
-    <template #right-header>
-      <CustomActions
-        v-if="tasksListView?.customListActions"
-        :actions="tasksListView.customListActions"
+      <div class="flex-1 overflow-y-auto p-2">
+        <button
+          class="mb-1 flex w-full items-center rounded px-2 py-1.5 text-sm hover:bg-surface-gray-3"
+          :class="allSelected ? 'bg-surface-gray-3 font-medium text-ink-gray-9' : 'text-ink-gray-7'"
+          @click="selectAll"
+        >
+          {{ __('Все проекты') }}
+        </button>
+        <div
+          v-for="p in projects.data"
+          :key="p.name"
+          class="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-surface-gray-3"
+          :class="selected.includes(p.name) ? 'bg-surface-gray-3' : ''"
+        >
+          <input
+            type="checkbox"
+            class="shrink-0 cursor-pointer"
+            :checked="selected.includes(p.name)"
+            @change.stop="toggle(p.name)"
+          />
+          <button
+            class="flex-1 truncate text-left text-sm text-ink-gray-8"
+            :title="p.organization || p.name"
+            @click="selectOne(p.name)"
+          >
+            {{ p.organization || p.name }}
+          </button>
+        </div>
+        <div
+          v-if="projects.data && !projects.data.length"
+          class="px-2 py-4 text-sm text-ink-gray-5"
+        >
+          {{ __('Пока нет проектов') }}
+        </div>
+      </div>
+    </div>
+    <!-- Правая часть: канбан задач выбранных проектов -->
+    <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <LayoutHeader>
+        <template #left-header>
+          <div class="truncate text-lg font-semibold text-ink-gray-8">{{ boardTitle }}</div>
+        </template>
+        <template #right-header>
+          <CustomActions
+            v-if="tasksListView?.customListActions"
+            :actions="tasksListView.customListActions"
+          />
+          <Button
+            variant="solid"
+            :label="__('Create')"
+            iconLeft="plus"
+            :disabled="!selected.length"
+            @click="createTask"
+          />
+        </template>
+      </LayoutHeader>
+      <ViewControls
+        :key="selectionKey"
+        ref="viewControls"
+        v-model="tasks"
+        v-model:loadMore="loadMore"
+        v-model:resizeColumn="triggerResize"
+        v-model:updatedPageCount="updatedPageCount"
+        doctype="CRM Task"
+        :filters="boardFilters"
+        :options="{
+          allowedViews: ['list', 'kanban'],
+          defaultColumnField: 'nacifrah_stage',
+        }"
       />
-      <Button
-        variant="solid"
-        :label="__('Create')"
-        iconLeft="plus"
-        @click="createTask"
-      />
-    </template>
-  </LayoutHeader>
-  <ViewControls
-    ref="viewControls"
-    v-model="tasks"
-    v-model:loadMore="loadMore"
-    v-model:resizeColumn="triggerResize"
-    v-model:updatedPageCount="updatedPageCount"
-    doctype="CRM Task"
-    :filters="{ reference_doctype: 'CRM Deal', reference_docname: projectId }"
-    :options="{
-      allowedViews: ['list', 'kanban'],
-      defaultColumnField: 'nacifrah_stage',
-    }"
-  />
   <KanbanView
     v-if="$route.params.viewType == 'kanban' && rows.length"
     v-model="tasks"
@@ -181,11 +229,13 @@
       (selections) => viewControls.updateSelections(selections)
     "
   />
-  <EmptyState
-    v-else-if="tasks.data && !rows.length"
-    name="Tasks"
-    :icon="Email2Icon"
-  />
+      <EmptyState
+        v-else-if="tasks.data && !rows.length"
+        name="Tasks"
+        :icon="Email2Icon"
+      />
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -205,7 +255,7 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { formatDate, timeAgo } from '@/utils'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
-import { Tooltip, Avatar, TextEditor, Dropdown, call } from 'frappe-ui'
+import { Tooltip, Avatar, TextEditor, Dropdown, call, createResource } from 'frappe-ui'
 import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -217,7 +267,64 @@ const { capture } = useTelemetry()
 
 const router = useRouter()
 const route = useRoute()
-const projectId = computed(() => route.params.projectId)
+
+// --- Выбор проекта(ов) для доски задач (один / несколько / все) ---
+const projects = createResource({
+  url: 'frappe.client.get_list',
+  params: {
+    doctype: 'CRM Deal',
+    filters: { nacifrah_is_project: 1 },
+    fields: ['name', 'organization'],
+    order_by: 'modified desc',
+    limit_page_length: 0,
+  },
+  auto: true,
+  onSuccess(data) {
+    if (initialized.value) return
+    initialized.value = true
+    const routeId = route.params.projectId
+    if (routeId) selected.value = [routeId]
+    else selected.value = (data || []).map((p) => p.name)
+  },
+})
+
+const selected = ref([])
+const initialized = ref(false)
+
+const allSelected = computed(
+  () =>
+    projects.data &&
+    projects.data.length > 0 &&
+    selected.value.length === projects.data.length,
+)
+function selectAll() {
+  selected.value = (projects.data || []).map((p) => p.name)
+}
+function selectOne(name) {
+  selected.value = [name]
+}
+function toggle(name) {
+  const i = selected.value.indexOf(name)
+  if (i >= 0) selected.value.splice(i, 1)
+  else selected.value.push(name)
+}
+const boardFilters = computed(() => {
+  const sel = selected.value
+  return {
+    reference_doctype: 'CRM Deal',
+    reference_docname:
+      sel.length === 1 ? sel[0] : ['in', sel.length ? sel : ['__nonesuch__']],
+  }
+})
+const selectionKey = computed(() => selected.value.slice().sort().join('|') || 'none')
+const boardTitle = computed(() => {
+  if (allSelected.value) return __('Все проекты')
+  if (selected.value.length === 1) {
+    const p = projects.data?.find((x) => x.name === selected.value[0])
+    return (p && (p.organization || p.name)) || __('Проект')
+  }
+  return __('Выбрано проектов: {0}', [selected.value.length])
+})
 
 const tasksListView = ref(null)
 
@@ -353,7 +460,7 @@ function createTask(column) {
     status: 'Backlog',
     priority: 'Low',
     reference_doctype: 'CRM Deal',
-    reference_docname: route.params.projectId,
+    reference_docname: route.params.projectId || selected.value[0],
   }
 
   if (column?.column?.name) {
