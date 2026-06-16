@@ -29,6 +29,18 @@
           </template>
         </SidebarLink>
       </div>
+      <div class="flex flex-col">
+        <SidebarLink
+          :label="__('Проекты')"
+          :to="{ name: 'Projects' }"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-[1.5px]"
+        >
+          <template #icon>
+            <FeatherIcon name="folder" class="h-4 w-4" />
+          </template>
+        </SidebarLink>
+      </div>
       <div v-for="view in allViews" :key="view.label">
         <div class="mx-2 my-1.5" />
         <Section
