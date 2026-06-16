@@ -56,10 +56,15 @@ const props = defineProps({
   icon: { type: [Object, String, Function], default: null },
   label: { type: String, default: '' },
   to: { type: [Object, String], default: null },
+  external: { type: String, default: '' },
   isCollapsed: { type: Boolean, default: false },
 })
 
 function handleClick() {
+  if (props.external) {
+    window.location.href = props.external
+    return
+  }
   if (!props.to) return
   if (typeof props.to === 'object') {
     router.push(props.to)

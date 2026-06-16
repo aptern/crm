@@ -40,6 +40,16 @@
             <FeatherIcon name="folder" class="h-4 w-4" />
           </template>
         </SidebarLink>
+        <SidebarLink
+          :label="__('База знаний')"
+          external="/wiki"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-[1.5px]"
+        >
+          <template #icon>
+            <FeatherIcon name="book-open" class="h-4 w-4" />
+          </template>
+        </SidebarLink>
       </div>
       <div v-for="view in allViews" :key="view.label">
         <div class="mx-2 my-1.5" />
