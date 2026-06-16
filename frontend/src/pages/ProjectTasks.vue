@@ -349,7 +349,7 @@ function showTask(name) {
 
 function createTask(column) {
   const defaults = {
-    status: 'К выполнению',
+    status: 'Backlog',
     priority: 'Low',
     reference_doctype: 'CRM Deal',
     reference_docname: route.params.projectId,

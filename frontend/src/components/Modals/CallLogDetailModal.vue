@@ -212,7 +212,7 @@ function showTask(name) {
     name,
     doctype: 'CRM Task',
     title: 'Task',
-    defaults: { status: 'К выполнению', priority: 'Low' },
+    defaults: { status: 'Backlog', priority: 'Low' },
     callbacks: {
       afterInsert: (d) => addTaskToCallLog(d, true),
       afterUpdate: (d) => addTaskToCallLog(d, false),
