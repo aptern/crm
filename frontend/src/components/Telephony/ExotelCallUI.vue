@@ -334,7 +334,7 @@ const task = ref({
   description: '',
   assigned_to: '',
   due_date: '',
-  status: 'Backlog',
+  status: 'К выполнению',
   priority: 'Low',
 })
 
@@ -458,7 +458,7 @@ function closeCallPopup() {
     description: '',
     assigned_to: '',
     due_date: '',
-    status: 'Backlog',
+    status: 'К выполнению',
     priority: 'Low',
   }
 }

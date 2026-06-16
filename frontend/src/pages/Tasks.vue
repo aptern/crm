@@ -342,7 +342,7 @@ function showTask(name) {
 }
 
 function createTask(column) {
-  const defaults = { status: 'Backlog', priority: 'Low' }
+  const defaults = { status: 'К выполнению', priority: 'Low' }
 
   if (column?.column?.name) {
     let column_field = tasks.value.params.column_field
