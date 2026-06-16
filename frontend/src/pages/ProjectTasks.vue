@@ -84,6 +84,12 @@
             :actions="tasksListView.customListActions"
           />
           <Button
+            v-if="selected.length === 1"
+            variant="ghost"
+            :label="__('История проекта')"
+            @click="showHistory = true"
+          />
+          <Button
             variant="solid"
             :label="__('Create')"
             iconLeft="plus"
@@ -92,6 +98,11 @@
           />
         </template>
       </LayoutHeader>
+      <ProjectHistory
+        v-if="selected.length === 1"
+        v-model="showHistory"
+        :project="selected[0]"
+      />
       <ViewControls
         :key="selectionKey"
         ref="viewControls"
@@ -104,6 +115,7 @@
         :options="{
           allowedViews: ['list', 'kanban'],
           defaultColumnField: columnField,
+          defaultKanbanFields: kanbanFields,
         }"
       />
   <KanbanView
@@ -193,6 +205,14 @@
             class="flex-1 overflow-hidden"
           />
         </div>
+        <div v-else-if="fieldName === 'due_date'">
+          <span
+            class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+            :style="dueChipStyle(getRow(itemName, fieldName).label)"
+          >
+            {{ formatDueDate(getRow(itemName, fieldName).label) }}
+          </span>
+        </div>
         <div v-else class="truncate text-base">
           {{ getRow(itemName, fieldName).label }}
         </div>
@@ -276,6 +296,7 @@ import ViewControls from '@/components/ViewControls.vue'
 import TasksListView from '@/components/ListViews/TasksListView.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import KanbanView from '@/components/Kanban/KanbanView.vue'
+import ProjectHistory from '@/components/ProjectHistory.vue'
 import { useDoctypeModal } from '@/composables/doctypeModal'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
@@ -316,6 +337,7 @@ const projects = createResource({
 
 const selected = ref([])
 const initialized = ref(false)
+const showHistory = ref(false)
 
 const allSelected = computed(
   () =>
@@ -350,6 +372,29 @@ const columnField = computed(() =>
 const selectionKey = computed(
   () => (selected.value.slice().sort().join('|') || 'none') + ':' + groupBy.value,
 )
+
+// Карточка на борде: показываем приоритет, исполнителя и дедлайн-чип
+const kanbanFields = JSON.stringify(['priority', 'assigned_to', 'due_date'])
+
+function dueChipStyle(s) {
+  const gray = { backgroundColor: '#f1f5f9', color: '#475569' }
+  if (!s) return gray
+  const d = new Date(String(s).replace(' ', 'T'))
+  if (isNaN(d)) return gray
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dd = new Date(d)
+  dd.setHours(0, 0, 0, 0)
+  if (dd < today) return { backgroundColor: '#fee2e2', color: '#b91c1c' }
+  if (dd.getTime() === today.getTime()) return { backgroundColor: '#ffedd5', color: '#c2410c' }
+  return gray
+}
+function formatDueDate(s) {
+  if (!s) return ''
+  const d = new Date(String(s).replace(' ', 'T'))
+  if (isNaN(d)) return s
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
+}
 const boardTitle = computed(() => {
   if (allSelected.value) return __('Все проекты')
   if (selected.value.length === 1) {

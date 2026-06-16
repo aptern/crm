@@ -469,7 +469,8 @@ function getParams() {
     _view?.column_field || props.options?.defaultColumnField || 'status'
   const title_field = _view?.title_field || ''
   const kanban_columns = _view?.kanban_columns || ''
-  const kanban_fields = _view?.kanban_fields || ''
+  const kanban_fields =
+    _view?.kanban_fields || props.options?.defaultKanbanFields || ''
 
   view.value = {
     name: view_name,
