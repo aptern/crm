@@ -50,7 +50,33 @@
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
       <LayoutHeader>
         <template #left-header>
-          <div class="truncate text-lg font-semibold text-ink-gray-8">{{ boardTitle }}</div>
+          <div class="flex items-center gap-3">
+            <div class="truncate text-lg font-semibold text-ink-gray-8">{{ boardTitle }}</div>
+            <div class="flex rounded-md bg-surface-gray-2 p-0.5 text-sm">
+              <button
+                class="rounded px-2.5 py-1"
+                :class="
+                  groupBy === 'stage'
+                    ? 'bg-surface-white font-medium text-ink-gray-9 shadow-sm'
+                    : 'text-ink-gray-6'
+                "
+                @click="groupBy = 'stage'"
+              >
+                {{ __('По этапам') }}
+              </button>
+              <button
+                class="rounded px-2.5 py-1"
+                :class="
+                  groupBy === 'deadline'
+                    ? 'bg-surface-white font-medium text-ink-gray-9 shadow-sm'
+                    : 'text-ink-gray-6'
+                "
+                @click="groupBy = 'deadline'"
+              >
+                {{ __('По сроку') }}
+              </button>
+            </div>
+          </div>
         </template>
         <template #right-header>
           <CustomActions
@@ -77,7 +103,7 @@
         :filters="boardFilters"
         :options="{
           allowedViews: ['list', 'kanban'],
-          defaultColumnField: 'nacifrah_stage',
+          defaultColumnField: columnField,
         }"
       />
   <KanbanView
@@ -316,7 +342,14 @@ const boardFilters = computed(() => {
       sel.length === 1 ? sel[0] : ['in', sel.length ? sel : ['__nonesuch__']],
   }
 })
-const selectionKey = computed(() => selected.value.slice().sort().join('|') || 'none')
+// Представление доски: по этапам (nacifrah_stage) или по сроку (nacifrah_deadline_bucket)
+const groupBy = ref('stage')
+const columnField = computed(() =>
+  groupBy.value === 'deadline' ? 'nacifrah_deadline_bucket' : 'nacifrah_stage',
+)
+const selectionKey = computed(
+  () => (selected.value.slice().sort().join('|') || 'none') + ':' + groupBy.value,
+)
 const boardTitle = computed(() => {
   if (allSelected.value) return __('Все проекты')
   if (selected.value.length === 1) {
