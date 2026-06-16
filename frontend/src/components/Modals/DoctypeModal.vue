@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model="show" :options="{ size: 'xl' }">
+  <Dialog v-model="show" :options="{ size: doctype === 'CRM Task' ? '3xl' : 'xl' }">
     <template #body>
       <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
         <div class="mb-5 flex items-center justify-between">
@@ -42,6 +42,10 @@
             :doctype="doctype"
           />
           <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
+          <TaskActivityFeed
+            v-if="doctype === 'CRM Task' && editMode && doc.name"
+            :task="doc.name"
+          />
         </div>
       </div>
       <div class="px-4 pb-7 pt-4 sm:px-6">
@@ -62,6 +66,7 @@
 import EditIcon from '@/components/Icons/EditIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import CustomActions from '@/components/CustomActions.vue'
+import TaskActivityFeed from '@/components/TaskActivityFeed.vue'
 import { useDocument } from '@/data/document'
 import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
