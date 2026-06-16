@@ -125,7 +125,7 @@
       onClick: (row) => showTask(row.name),
       onNewClick: (column) => createTask(column),
     }"
-    @update="(data) => viewControls.updateKanbanSettings(data)"
+    @update="onKanbanUpdate"
     @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
   >
     <template #title="{ titleField, itemName }">
@@ -325,6 +325,7 @@ import {
   FeatherIcon,
   call,
   createResource,
+  toast,
 } from 'frappe-ui'
 import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -552,6 +553,24 @@ watch(
 )
 function metaFor(name) {
   return cardMeta.value[String(name)] || {}
+}
+
+async function onKanbanUpdate(data) {
+  // В виде «по сроку» перетаскивание карточки меняет дедлайн (корзина — производная)
+  if (groupBy.value === 'deadline' && data?.item && data?.to) {
+    try {
+      await call('nacifrah.tasks_api.set_task_due_for_bucket', {
+        task: data.item,
+        bucket: data.to,
+      })
+      tasks.value.reload()
+      cardMetaResource.reload()
+    } catch (e) {
+      toast.error(e?.messages?.[0] || __('Не удалось перенести задачу'))
+    }
+    return
+  }
+  viewControls.value?.updateKanbanSettings(data)
 }
 
 const { showModal } = useDoctypeModal()
