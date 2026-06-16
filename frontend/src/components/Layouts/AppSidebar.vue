@@ -50,6 +50,28 @@
             <FeatherIcon name="book-open" class="h-4 w-4" />
           </template>
         </SidebarLink>
+        <SidebarLink
+          v-if="isManager()"
+          :label="__('Сотрудники')"
+          external="/app/employee"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-[1.5px]"
+        >
+          <template #icon>
+            <FeatherIcon name="users" class="h-4 w-4" />
+          </template>
+        </SidebarLink>
+        <SidebarLink
+          v-if="isManager()"
+          :label="__('Права доступа')"
+          external="/app/role-permission-manager"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-[1.5px]"
+        >
+          <template #icon>
+            <FeatherIcon name="shield" class="h-4 w-4" />
+          </template>
+        </SidebarLink>
       </div>
       <div v-for="view in allViews" :key="view.label">
         <div class="mx-2 my-1.5" />
