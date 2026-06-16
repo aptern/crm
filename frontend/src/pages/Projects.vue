@@ -33,9 +33,8 @@
     v-model="deals"
     :options="{
       getRoute: (row) => ({
-        name: 'Deal',
-        params: { dealId: row.name },
-        query: { view: route.query.view, viewType: route.params.viewType },
+        name: 'ProjectTasks',
+        params: { projectId: row.name, viewType: 'kanban' },
       }),
       onNewClick: (column) => onNewClick(column),
     }"
