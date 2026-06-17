@@ -30,6 +30,11 @@ const routes = [
     component: () => import('@/pages/ProjectTasks.vue'),
   },
   {
+    path: '/employees',
+    name: 'Employees',
+    component: () => import('@/pages/Employees.vue'),
+  },
+  {
     alias: '/leads',
     path: '/leads/view/:viewType?',
     name: 'Leads',

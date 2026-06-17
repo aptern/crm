@@ -53,7 +53,7 @@
         <SidebarLink
           v-if="isManager()"
           :label="__('Сотрудники')"
-          external="/app/employee"
+          :to="{ name: 'Employees' }"
           :isCollapsed="isSidebarCollapsed"
           class="mx-2 my-[1.5px]"
         >
