@@ -1,19 +1,19 @@
 @import 'frappe-ui/style.css';
 
-/* A3 — тонкие ненавязчивые скроллбары: узкая полоска, без фона дорожки. */
+/* A3/A10 — очень тонкие ненавязчивые скроллбары: узкая полоска, без фона дорожки. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.32) transparent;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
 }
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 116, 139, 0.28);
+  background-color: rgba(100, 116, 139, 0.25);
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
