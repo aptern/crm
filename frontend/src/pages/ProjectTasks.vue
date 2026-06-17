@@ -733,17 +733,20 @@ function cardStyleFor(fields) {
 }
 
 async function onKanbanUpdate(data) {
-  // В виде «по сроку» перетаскивание карточки меняет дедлайн (корзина — производная)
-  if (groupBy.value === 'deadline' && data?.item && data?.to) {
-    try {
-      await call('nacifrah.tasks_api.set_task_due_for_bucket', {
-        task: data.item,
-        bucket: data.to,
-      })
-      tasks.value.reload()
-      cardMetaResource.reload()
-    } catch (e) {
-      toast.error(e?.messages?.[0] || __('Не удалось перенести задачу'))
+  // Вид «по сроку»: корзины производные и read-only. Перетаскивание карточки меняет
+  // дедлайн; любые операции с колонками НЕ сохраняем (иначе перезатрём этапный вид).
+  if (groupBy.value === 'deadline') {
+    if (data?.item && data?.to) {
+      try {
+        await call('nacifrah.tasks_api.set_task_due_for_bucket', {
+          task: data.item,
+          bucket: data.to,
+        })
+        tasks.value.reload()
+        cardMetaResource.reload()
+      } catch (e) {
+        toast.error(e?.messages?.[0] || __('Не удалось перенести задачу'))
+      }
     }
     return
   }

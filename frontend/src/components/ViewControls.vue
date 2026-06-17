@@ -465,10 +465,17 @@ function getParams() {
   const group_by_field = _view?.group_by_field || 'owner'
   const columns = _view?.columns || ''
   const rows = _view?.rows || ''
+  // B15: явный defaultColumnField (передаёт только ProjectTasks для переключателя
+  // «этапы/срок») имеет приоритет над сохранённым видом. Если активное поле колонок
+  // не совпадает с сохранённым видом, его kanban_columns относятся к ДРУГОМУ полю —
+  // игнорируем их, чтобы канбан собрал колонки из опций активного поля.
   const column_field =
-    _view?.column_field || props.options?.defaultColumnField || 'status'
+    props.options?.defaultColumnField || _view?.column_field || 'status'
+  const usingDefaultField =
+    !!props.options?.defaultColumnField &&
+    props.options.defaultColumnField !== _view?.column_field
   const title_field = _view?.title_field || ''
-  const kanban_columns = _view?.kanban_columns || ''
+  const kanban_columns = usingDefaultField ? '' : _view?.kanban_columns || ''
   const kanban_fields =
     _view?.kanban_fields || props.options?.defaultKanbanFields || ''
 
