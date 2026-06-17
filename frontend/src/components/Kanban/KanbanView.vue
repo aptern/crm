@@ -11,7 +11,7 @@
       <template #item="{ element: column }">
         <div
           v-if="!column.column.delete"
-          class="flex flex-col gap-2.5 min-w-72 w-72 hover:bg-surface-gray-2 rounded-lg p-2.5"
+          class="flex flex-col gap-2.5 min-w-64 w-64 hover:bg-surface-gray-2 rounded-lg p-2.5"
         >
           <div class="flex gap-2 items-center group justify-between">
             <div class="flex items-center text-base">
@@ -30,15 +30,17 @@
                   <div
                     class="flex flex-col gap-3 px-3 py-2.5 min-w-40 rounded-lg bg-surface-modal shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none"
                   >
-                    <div class="flex gap-1">
-                      <Button
+                    <!-- G8: палитра сеткой квадратов (а не широкой полосой) -->
+                    <div class="grid grid-cols-5 gap-1.5">
+                      <button
                         v-for="color in colors"
                         :key="color"
-                        variant="ghost"
+                        type="button"
+                        class="grid size-6 place-items-center rounded hover:bg-surface-gray-3"
                         @click="() => (column.column.color = color)"
                       >
                         <IndicatorIcon :class="parseColor(color)" />
-                      </Button>
+                      </button>
                     </div>
                     <div class="flex flex-row-reverse">
                       <Button
