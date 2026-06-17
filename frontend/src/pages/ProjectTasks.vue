@@ -190,6 +190,25 @@
           @change.stop="(e) => updateDue(itemName, e.target.value)"
         />
       </div>
+      <div v-else-if="fieldName === 'assigned_to'" @click.stop>
+        <Dropdown :options="assigneeOptions(itemName)">
+          <button
+            class="flex items-center"
+            :title="__('Назначить исполнителя')"
+            @click.stop.prevent
+          >
+            <Avatar
+              v-if="getRow(itemName, 'assigned_to').full_name"
+              :image="getRow(itemName, 'assigned_to').user_image"
+              :label="getRow(itemName, 'assigned_to').full_name"
+              size="sm"
+            />
+            <span v-else class="flex items-center text-ink-gray-4">
+              <FeatherIcon name="user-plus" class="h-4 w-4" />
+            </span>
+          </button>
+        </Dropdown>
+      </div>
       <div
         v-else-if="getRow(itemName, fieldName).label"
         class="truncate flex items-center gap-2"
@@ -210,15 +229,6 @@
               <TaskPriorityIcon :priority="getRow(itemName, fieldName).label" />
             </button>
           </Dropdown>
-        </div>
-        <div v-else-if="fieldName === 'assigned_to'">
-          <Avatar
-            v-if="getRow(itemName, fieldName).full_name"
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).user_image"
-            :label="getRow(itemName, fieldName).full_name"
-            size="sm"
-          />
         </div>
         <div
           v-if="['modified', 'creation'].includes(fieldName)"
@@ -344,7 +354,7 @@ import { useRouter, useRoute } from 'vue-router'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
-const { getUser } = usersStore()
+const { getUser, crmUsers } = usersStore()
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 const { capture } = useTelemetry()
 
@@ -472,6 +482,29 @@ async function updatePriority(task, val) {
     tasks.value.reload()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось изменить приоритет'))
+  }
+}
+
+// Назначение/смена исполнителя прямо с карточки
+function assigneeOptions(task) {
+  const opts = (crmUsers.value || []).map((u) => ({
+    label: u.full_name || u.name,
+    onClick: () => updateAssignee(task, u.name),
+  }))
+  opts.push({ label: __('Снять исполнителя'), onClick: () => updateAssignee(task, '') })
+  return opts
+}
+async function updateAssignee(task, email) {
+  try {
+    await call('frappe.client.set_value', {
+      doctype: 'CRM Task',
+      name: task,
+      fieldname: 'assigned_to',
+      value: email || null,
+    })
+    tasks.value.reload()
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось назначить исполнителя'))
   }
 }
 const boardTitle = computed(() => {
