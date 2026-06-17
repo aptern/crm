@@ -35,6 +35,11 @@ const routes = [
     component: () => import('@/pages/Employees.vue'),
   },
   {
+    path: '/permissions',
+    name: 'Permissions',
+    component: () => import('@/pages/Permissions.vue'),
+  },
+  {
     alias: '/leads',
     path: '/leads/view/:viewType?',
     name: 'Leads',

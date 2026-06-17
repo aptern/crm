@@ -64,7 +64,7 @@
         <SidebarLink
           v-if="isManager()"
           :label="__('Права доступа')"
-          external="/app/role-permission-manager"
+          :to="{ name: 'Permissions' }"
           :isCollapsed="isSidebarCollapsed"
           class="mx-2 my-[1.5px]"
         >
