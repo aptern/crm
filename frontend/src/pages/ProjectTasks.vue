@@ -776,10 +776,24 @@ function showTask(name) {
   })
 }
 
+// Дедлайн по умолчанию (B9): сегодня + 2 рабочих дня (выходные пропускаем).
+function defaultDueDate() {
+  const d = new Date()
+  let added = 0
+  while (added < 2) {
+    d.setDate(d.getDate() + 1)
+    const day = d.getDay() // 0=вс, 6=сб
+    if (day !== 0 && day !== 6) added++
+  }
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 00:00:00`
+}
+
 function createTask(column) {
   const defaults = {
     status: 'Backlog',
     priority: 'Medium',
+    due_date: defaultDueDate(),
     reference_doctype: 'CRM Deal',
     reference_docname: route.params.projectId || selected.value[0],
   }
