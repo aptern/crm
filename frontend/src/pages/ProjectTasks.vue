@@ -200,8 +200,16 @@
             :status="getRow(itemName, fieldName).label"
           />
         </div>
-        <div v-else-if="fieldName === 'priority'">
-          <TaskPriorityIcon :priority="getRow(itemName, fieldName).label" />
+        <div v-else-if="fieldName === 'priority'" @click.stop>
+          <Dropdown :options="priorityOptions(itemName)">
+            <button
+              class="flex items-center"
+              :title="__('Изменить приоритет')"
+              @click.stop.prevent
+            >
+              <TaskPriorityIcon :priority="getRow(itemName, fieldName).label" />
+            </button>
+          </Dropdown>
         </div>
         <div v-else-if="fieldName === 'assigned_to'">
           <Avatar
@@ -442,6 +450,28 @@ async function updateDue(task, val) {
     cardMetaResource.reload()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось изменить срок'))
+  }
+}
+
+// Смена приоритета прямо с карточки (карточка перекрашивается)
+const PRIORITY_LABELS = { High: 'Высокий', Medium: 'Средний', Low: 'Низкий' }
+function priorityOptions(task) {
+  return ['High', 'Medium', 'Low'].map((p) => ({
+    label: PRIORITY_LABELS[p],
+    onClick: () => updatePriority(task, p),
+  }))
+}
+async function updatePriority(task, val) {
+  try {
+    await call('frappe.client.set_value', {
+      doctype: 'CRM Task',
+      name: task,
+      fieldname: 'priority',
+      value: val,
+    })
+    tasks.value.reload()
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось изменить приоритет'))
   }
 }
 const boardTitle = computed(() => {
