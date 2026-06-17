@@ -62,10 +62,7 @@
         type="button"
         class="flex-1 min-w-[72px] rounded-md px-2 py-1.5 text-[11px] font-medium transition"
         :style="data[field.fieldname] === opt.value ? opt.active : opt.idle"
-        @click="
-          data[field.fieldname] = opt.value
-          fieldChange(opt.value, field)
-        "
+        @click="(data[field.fieldname] = opt.value), fieldChange(opt.value, field)"
       >
         {{ opt.label }}
       </button>
