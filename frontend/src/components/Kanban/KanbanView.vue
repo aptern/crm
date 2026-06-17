@@ -74,7 +74,7 @@
               :list="column.data"
               group="fields"
               item-key="name"
-              class="flex flex-col gap-3.5 flex-1"
+              class="flex flex-col gap-2 flex-1"
               :delay="isTouchScreenDevice() ? 200 : 0"
               :data-column="column.column.name"
               @end="updateColumn"
@@ -82,7 +82,7 @@
               <template #item="{ element: fields }">
                 <component
                   :is="options.getRoute ? 'router-link' : 'div'"
-                  class="pt-3 px-3.5 pb-2.5 rounded-lg border bg-surface-white text-base flex flex-col text-ink-gray-9"
+                  class="pt-2 px-3 pb-1.5 rounded-lg border bg-surface-white text-base flex flex-col text-ink-gray-9"
                   :data-name="fields.name"
                   :style="options.cardStyle ? options.cardStyle(fields) : undefined"
                   v-bind="{
@@ -105,9 +105,9 @@
                       </div>
                     </div>
                   </slot>
-                  <div class="border-b h-px my-2.5" />
+                  <div class="border-b h-px my-1.5" />
 
-                  <div class="flex flex-col gap-3.5">
+                  <div class="flex flex-row flex-wrap items-center gap-x-3 gap-y-1">
                     <template v-for="value in column.fields" :key="value">
                       <slot
                         name="fields"
@@ -123,7 +123,7 @@
                       </slot>
                     </template>
                   </div>
-                  <div class="border-b h-px mt-2.5 mb-2" />
+                  <div class="border-b h-px mt-1.5 mb-1" />
                   <slot name="actions" v-bind="{ itemName: fields.name }">
                     <div class="flex gap-2 items-center justify-between">
                       <div></div>

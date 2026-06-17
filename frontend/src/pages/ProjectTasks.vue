@@ -163,18 +163,50 @@
         </div>
         <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
       </div>
+      <!-- Чек-лист на борде (B6): счётчик + раскрытие пунктов по клику. Значок комментариев убран (B7). -->
       <div
-        v-if="metaFor(itemName).cl_total || metaFor(itemName).comments"
-        class="flex items-center gap-3 text-xs text-ink-gray-5"
+        v-if="metaFor(itemName).cl_total"
+        class="text-xs text-ink-gray-5"
+        @click.stop
       >
-        <span v-if="metaFor(itemName).cl_total" class="flex items-center gap-1">
+        <button
+          class="flex items-center gap-1 rounded px-1 -mx-1 hover:bg-surface-gray-2"
+          :title="__('Показать чек-лист')"
+          @click.stop="toggleChecklist(itemName)"
+        >
           <FeatherIcon name="check-square" class="h-3 w-3" />
           {{ metaFor(itemName).cl_done }}/{{ metaFor(itemName).cl_total }}
-        </span>
-        <span v-if="metaFor(itemName).comments" class="flex items-center gap-1">
-          <FeatherIcon name="message-circle" class="h-3 w-3" />
-          {{ metaFor(itemName).comments }}
-        </span>
+          <FeatherIcon
+            :name="openChecklists.has(itemName) ? 'chevron-up' : 'chevron-down'"
+            class="h-3 w-3"
+          />
+        </button>
+        <div
+          v-if="openChecklists.has(itemName)"
+          class="mt-1 flex flex-col gap-0.5"
+        >
+          <div
+            v-if="!checklistItems(itemName).length"
+            class="text-ink-gray-4 px-1"
+          >…</div>
+          <label
+            v-for="it in checklistItems(itemName)"
+            :key="it.name"
+            class="flex items-start gap-1.5 cursor-pointer hover:bg-surface-gray-2 rounded px-1 -mx-1 py-0.5"
+            @click.stop
+          >
+            <input
+              type="checkbox"
+              class="mt-0.5 shrink-0 cursor-pointer"
+              :checked="!!it.is_done"
+              @change.stop="toggleChecklistItem(itemName, it)"
+            />
+            <span
+              class="leading-snug"
+              :class="it.is_done ? 'line-through text-ink-gray-4' : 'text-ink-gray-7'"
+            >{{ it.item }}</span>
+          </label>
+        </div>
       </div>
       </div>
     </template>
@@ -255,35 +287,16 @@
         </div>
       </div>
     </template>
+    <!-- Ссылка на сделку убрана с борта (B5) — она доступна внутри задачи. На борде только меню «…». -->
     <template #actions="{ itemName }">
-      <div class="flex gap-2 items-center justify-between">
-        <div>
-          <Button
-            v-if="getRow(itemName, 'reference_docname').label"
-            class="-ml-2"
-            variant="ghost"
-            size="sm"
-            :label="
-              getRow(itemName, 'reference_doctype').label == 'CRM Deal'
-                ? __('Deal')
-                : __('Lead')
-            "
-            :iconRight="ArrowUpRightIcon"
-            @click.stop="
-              redirect(
-                getRow(itemName, 'reference_doctype').label,
-                getRow(itemName, 'reference_docname').label,
-              )
-            "
-          />
-        </div>
+      <div class="flex items-center justify-end">
         <Dropdown
-          class="flex items-center gap-2"
+          class="flex items-center"
           :options="actions(itemName)"
           variant="ghost"
           @click.stop.prevent
         >
-          <Button icon="more-horizontal" variant="ghost" />
+          <Button icon="more-horizontal" variant="ghost" size="sm" />
         </Dropdown>
       </div>
     </template>
@@ -641,6 +654,46 @@ watch(
 )
 function metaFor(name) {
   return cardMeta.value[String(name)] || {}
+}
+
+// --- Чек-лист на борде (B6): раскрытие, ленивая загрузка пунктов, переключение галочки ---
+const openChecklists = ref(new Set())
+const checklistData = ref({})
+function checklistItems(name) {
+  return checklistData.value[String(name)] || []
+}
+async function loadChecklist(name) {
+  try {
+    const data = await call('nacifrah.tasks_api.get_task_checklist', { task: name })
+    checklistData.value = { ...checklistData.value, [String(name)]: data || [] }
+  } catch (e) {
+    checklistData.value = { ...checklistData.value, [String(name)]: [] }
+  }
+}
+function toggleChecklist(name) {
+  const s = new Set(openChecklists.value)
+  const key = String(name)
+  if (s.has(key)) {
+    s.delete(key)
+  } else {
+    s.add(key)
+    if (!checklistData.value[key]) loadChecklist(name)
+  }
+  openChecklists.value = s
+}
+async function toggleChecklistItem(name, it) {
+  const next = it.is_done ? 0 : 1
+  it.is_done = next // оптимистично
+  try {
+    await call('nacifrah.tasks_api.toggle_checklist_item', {
+      item_name: it.name,
+      is_done: next,
+    })
+    cardMetaResource.reload() // обновить счётчик x/y
+  } catch (e) {
+    it.is_done = next ? 0 : 1 // откат
+    toast.error(e?.messages?.[0] || __('Не удалось изменить пункт'))
+  }
 }
 
 // Цвет карточки по приоритету: левая полоса (High=красный, Medium=янтарный, Low=синий)
