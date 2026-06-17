@@ -258,7 +258,10 @@
               :title="__('Изменить приоритет')"
               @click.stop.prevent
             >
-              <TaskPriorityIcon :priority="getRow(itemName, fieldName).label" />
+              <span
+                class="rounded px-1.5 py-0.5 text-xs font-medium leading-none"
+                :style="priorityChipStyle(getRow(itemName, fieldName).label)"
+              >{{ priorityLabel(getRow(itemName, fieldName).label) }}</span>
             </button>
           </Dropdown>
         </div>
@@ -476,10 +479,30 @@ async function updateDue(task, val) {
   }
 }
 
-// Смена приоритета прямо с карточки (карточка перекрашивается)
-const PRIORITY_LABELS = { High: 'Высокий', Medium: 'Средний', Low: 'Низкий' }
+// Приоритеты (B2): 4 уровня. Значения по-английски (Low/Medium/High/Urgent),
+// русские подписи + цвета — на отображении. Дефолт — «Нормально» (Medium).
+const PRIORITY_LABELS = {
+  Urgent: 'Крайне срочно',
+  High: 'Срочно',
+  Medium: 'Нормально',
+  Low: 'Не срочно',
+}
+// Цвета: крайне срочно — красный, срочно — бледно-красный, нормально — зелёный, не срочно — серый.
+const PRIORITY_CHIP = {
+  Urgent: { backgroundColor: '#fee2e2', color: '#b91c1c' },
+  High: { backgroundColor: '#fef2f2', color: '#ef4444' },
+  Medium: { backgroundColor: '#dcfce7', color: '#15803d' },
+  Low: { backgroundColor: '#f1f5f9', color: '#64748b' },
+}
+const PRIORITY_ORDER = ['Urgent', 'High', 'Medium', 'Low']
+function priorityLabel(p) {
+  return PRIORITY_LABELS[p] || p || __('Не срочно')
+}
+function priorityChipStyle(p) {
+  return PRIORITY_CHIP[p] || PRIORITY_CHIP.Low
+}
 function priorityOptions(task) {
-  return ['High', 'Medium', 'Low'].map((p) => ({
+  return PRIORITY_ORDER.map((p) => ({
     label: PRIORITY_LABELS[p],
     onClick: () => updatePriority(task, p),
   }))
@@ -696,11 +719,13 @@ async function toggleChecklistItem(name, it) {
   }
 }
 
-// Цвет карточки по приоритету: левая полоса (High=красный, Medium=янтарный, Low=синий)
+// Цвет левой полосы карточки по приоритету (B2): крайне срочно=красный,
+// срочно=бледно-красный, нормально=зелёный, не срочно=серый.
 const PRIORITY_COLORS = {
-  High: '#ef4444',
-  Medium: '#f59e0b',
-  Low: '#3b82f6',
+  Urgent: '#dc2626',
+  High: '#f87171',
+  Medium: '#16a34a',
+  Low: '#94a3b8',
 }
 function cardStyleFor(fields) {
   const c = PRIORITY_COLORS[fields?.priority]
@@ -751,7 +776,7 @@ function showTask(name) {
 function createTask(column) {
   const defaults = {
     status: 'Backlog',
-    priority: 'Low',
+    priority: 'Medium',
     reference_doctype: 'CRM Deal',
     reference_docname: route.params.projectId || selected.value[0],
   }
