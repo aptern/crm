@@ -124,6 +124,7 @@
     :options="{
       onClick: (row) => showTask(row.name),
       onNewClick: (column) => createTask(column),
+      cardStyle: cardStyleFor,
     }"
     @update="onKanbanUpdate"
     @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
@@ -553,6 +554,17 @@ watch(
 )
 function metaFor(name) {
   return cardMeta.value[String(name)] || {}
+}
+
+// Цвет карточки по приоритету: левая полоса (High=красный, Medium=янтарный, Low=синий)
+const PRIORITY_COLORS = {
+  High: '#ef4444',
+  Medium: '#f59e0b',
+  Low: '#3b82f6',
+}
+function cardStyleFor(fields) {
+  const c = PRIORITY_COLORS[fields?.priority]
+  return c ? { borderLeftWidth: '4px', borderLeftColor: c } : {}
 }
 
 async function onKanbanUpdate(data) {
