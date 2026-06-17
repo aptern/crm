@@ -179,8 +179,19 @@
       </div>
     </template>
     <template #fields="{ fieldName, itemName }">
+      <div v-if="fieldName === 'due_date'" class="inline-flex" @click.stop>
+        <input
+          type="date"
+          :value="dueInputValue(getRow(itemName, fieldName).label)"
+          class="cursor-pointer rounded border-0 px-1.5 py-0.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-outline-gray-3"
+          :style="dueChipStyle(getRow(itemName, fieldName).label)"
+          :title="__('Изменить срок')"
+          @click.stop
+          @change.stop="(e) => updateDue(itemName, e.target.value)"
+        />
+      </div>
       <div
-        v-if="getRow(itemName, fieldName).label"
+        v-else-if="getRow(itemName, fieldName).label"
         class="truncate flex items-center gap-2"
       >
         <div v-if="fieldName === 'status'">
@@ -220,14 +231,6 @@
             editor-class="!prose-sm max-w-none focus:outline-none"
             class="flex-1 overflow-hidden"
           />
-        </div>
-        <div v-else-if="fieldName === 'due_date'">
-          <span
-            class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
-            :style="dueChipStyle(getRow(itemName, fieldName).label)"
-          >
-            {{ formatDueDate(getRow(itemName, fieldName).label) }}
-          </span>
         </div>
         <div v-else class="truncate text-base">
           {{ getRow(itemName, fieldName).label }}
@@ -419,6 +422,27 @@ function formatDueDate(s) {
   const d = new Date(String(s).replace(' ', 'T'))
   if (isNaN(d)) return s
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
+}
+// YYYY-MM-DD для нативного <input type="date">
+function dueInputValue(s) {
+  if (!s) return ''
+  const str = String(s)
+  return str.length >= 10 ? str.slice(0, 10) : ''
+}
+// Изменение дедлайна прямо с карточки (без открытия задачи)
+async function updateDue(task, val) {
+  try {
+    await call('frappe.client.set_value', {
+      doctype: 'CRM Task',
+      name: task,
+      fieldname: 'due_date',
+      value: val || null,
+    })
+    tasks.value.reload()
+    cardMetaResource.reload()
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось изменить срок'))
+  }
 }
 const boardTitle = computed(() => {
   if (allSelected.value) return __('Все проекты')
