@@ -51,6 +51,25 @@
       :parentDoctype="doctype"
       :parentFieldname="field.fieldname"
     />
+    <!-- B9: приоритет задачи — 4 цветные кнопки вместо выпадающего списка. -->
+    <div
+      v-else-if="field.fieldname === 'priority' && doctype === 'CRM Task'"
+      class="flex flex-wrap gap-1"
+    >
+      <button
+        v-for="opt in taskPriorityButtons"
+        :key="opt.value"
+        type="button"
+        class="flex-1 min-w-[72px] rounded-md px-2 py-1.5 text-[11px] font-medium transition"
+        :style="data[field.fieldname] === opt.value ? opt.active : opt.idle"
+        @click="
+          data[field.fieldname] = opt.value
+          fieldChange(opt.value, field)
+        "
+      >
+        {{ opt.label }}
+      </button>
+    </div>
     <FormControl
       v-else-if="field.fieldtype === 'Select'"
       v-model="data[field.fieldname]"
@@ -341,6 +360,14 @@ const data = inject('data')
 const doctype = inject('doctype')
 const preview = inject('preview')
 const isGridRow = inject('isGridRow')
+
+// B9: 4 цветные кнопки приоритета задачи (значения Low/Medium/High/Urgent, рус. подписи + цвета).
+const taskPriorityButtons = [
+  { value: 'Low', label: 'Не срочно', active: { backgroundColor: '#94a3b8', color: '#fff' }, idle: { backgroundColor: '#f1f5f9', color: '#64748b' } },
+  { value: 'Medium', label: 'Нормально', active: { backgroundColor: '#16a34a', color: '#fff' }, idle: { backgroundColor: '#dcfce7', color: '#15803d' } },
+  { value: 'High', label: 'Срочно', active: { backgroundColor: '#f87171', color: '#fff' }, idle: { backgroundColor: '#fef2f2', color: '#ef4444' } },
+  { value: 'Urgent', label: 'Крайне срочно', active: { backgroundColor: '#dc2626', color: '#fff' }, idle: { backgroundColor: '#fee2e2', color: '#b91c1c' } },
+]
 
 // Guard getMeta — skip when doctype is empty (inline/standalone mode)
 let getFormattedPercent, getFormattedFloat, getFormattedCurrency

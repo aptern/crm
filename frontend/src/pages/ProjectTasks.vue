@@ -285,7 +285,11 @@
             class="flex-1 overflow-hidden"
           />
         </div>
-        <div v-else class="truncate text-base">
+        <!-- status/priority уже отрисованы выше (иконка/чип) — не дублируем сырым значением. -->
+        <div
+          v-else-if="!['status', 'priority'].includes(fieldName)"
+          class="truncate text-base"
+        >
           {{ getRow(itemName, fieldName).label }}
         </div>
       </div>
