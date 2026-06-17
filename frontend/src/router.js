@@ -40,6 +40,11 @@ const routes = [
     component: () => import('@/pages/Permissions.vue'),
   },
   {
+    path: '/funnels',
+    name: 'Funnels',
+    component: () => import('@/pages/Funnels.vue'),
+  },
+  {
     alias: '/leads',
     path: '/leads/view/:viewType?',
     name: 'Leads',

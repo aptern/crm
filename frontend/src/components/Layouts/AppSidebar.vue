@@ -72,6 +72,17 @@
             <FeatherIcon name="shield" class="h-4 w-4" />
           </template>
         </SidebarLink>
+        <SidebarLink
+          v-if="isManager()"
+          :label="__('Воронки')"
+          :to="{ name: 'Funnels' }"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-[1.5px]"
+        >
+          <template #icon>
+            <FeatherIcon name="filter" class="h-4 w-4" />
+          </template>
+        </SidebarLink>
       </div>
       <div v-for="view in allViews" :key="view.label">
         <div class="mx-2 my-1.5" />
