@@ -52,6 +52,33 @@
             </template>
           </Popover>
 
+          <!-- E5: тип этапа (Bitrix24) — обычный / ключевой − / ключевой + -->
+          <Popover>
+            <template #target="{ togglePopover }">
+              <button
+                class="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
+                :class="kindBadgeClass(st.stage_kind)"
+                :title="__('Тип этапа')"
+                @click="togglePopover"
+              >
+                {{ kindLabel(st.stage_kind) }}
+              </button>
+            </template>
+            <template #body="{ togglePopover }">
+              <div class="flex flex-col gap-0.5 rounded-lg bg-surface-modal p-1 shadow-xl ring-1 ring-black ring-opacity-5">
+                <button
+                  v-for="k in stageKinds"
+                  :key="k.value"
+                  class="flex items-center gap-2 whitespace-nowrap rounded px-2 py-1 text-left text-sm hover:bg-surface-gray-2"
+                  @click="(setKind(s.kind, st.name, k.value), togglePopover())"
+                >
+                  <span class="size-2 rounded-full" :class="k.dot" />
+                  {{ k.label }}
+                </button>
+              </div>
+            </template>
+          </Popover>
+
           <input
             class="flex-1 rounded border-0 bg-transparent px-1 text-sm text-ink-gray-8 focus:outline-none focus:ring-1 focus:ring-outline-gray-3"
             :value="st.name"
@@ -143,6 +170,25 @@ function rename(kind, oldName, ev) {
 }
 function setColor(kind, name, color) {
   act('nacifrah.funnels.set_funnel_stage_color', { kind, stage_name: name, color }, kind)
+}
+// E5: тип этапа (Bitrix24) — обычный / ключевой негативный / ключевой позитивный
+const stageKinds = [
+  { value: 'normal', label: 'В работе', dot: 'bg-gray-400' },
+  { value: 'key_negative', label: 'Ключевой − (проигрыш)', dot: 'bg-red-500' },
+  { value: 'key_positive', label: 'Ключевой + (успех)', dot: 'bg-green-500' },
+]
+function kindLabel(k) {
+  if (k === 'key_positive') return 'Ключевой +'
+  if (k === 'key_negative') return 'Ключевой −'
+  return 'В работе'
+}
+function kindBadgeClass(k) {
+  if (k === 'key_positive') return 'bg-green-100 text-green-700'
+  if (k === 'key_negative') return 'bg-red-100 text-red-700'
+  return 'bg-surface-gray-2 text-ink-gray-6'
+}
+function setKind(kind, name, stage_kind) {
+  act('nacifrah.funnels.set_funnel_stage_kind', { kind, stage_name: name, stage_kind }, kind)
 }
 function move(kind, name, direction) {
   act('nacifrah.funnels.reorder_funnel_stage', { kind, stage_name: name, direction }, kind)

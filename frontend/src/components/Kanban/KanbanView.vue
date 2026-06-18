@@ -1,5 +1,19 @@
 <template>
-  <div class="flex overflow-x-auto h-full">
+  <div class="flex flex-col h-full">
+    <!-- E5 (Bitrix24): фильтр «В работе» прячет ключевые (финальные) этапы -->
+    <div v-if="hasFinalStages" class="flex items-center gap-2 px-3 pt-2.5">
+      <Button
+        :variant="hideFinalStages ? 'solid' : 'subtle'"
+        size="sm"
+        :label="__('В работе')"
+        :tooltip="__('Скрыть ключевые (финальные) этапы')"
+        @click="hideFinalStages = !hideFinalStages"
+      />
+      <span class="text-xs text-ink-gray-5">
+        {{ hideFinalStages ? __('Финальные этапы скрыты') : __('Показаны все этапы') }}
+      </span>
+    </div>
+    <div class="flex overflow-x-auto h-full">
     <Draggable
       v-if="columns"
       :list="columns"
@@ -10,7 +24,7 @@
     >
       <template #item="{ element: column }">
         <div
-          v-if="!column.column.delete"
+          v-if="!column.column.delete && !(hideFinalStages && isFinalStage(column))"
           class="flex flex-col gap-2.5 min-w-64 w-64 hover:bg-surface-gray-2 rounded-lg p-2.5"
         >
           <div class="flex gap-2 items-center group justify-between">
@@ -59,6 +73,15 @@
               >
                 {{ column.column.name }}
               </div>
+              <!-- E5: метка ключевого (финального) этапа -->
+              <span
+                v-if="stageKind(column) !== 'normal'"
+                class="ml-1 grid size-4 place-items-center rounded-full text-[10px] font-bold leading-none"
+                :class="stageKind(column) === 'key_positive' ? '!bg-green-100 !text-green-700' : '!bg-red-100 !text-red-700'"
+                :title="stageKind(column) === 'key_positive' ? __('Ключевой положительный (финал)') : __('Ключевой отрицательный (финал)')"
+              >
+                {{ stageKind(column) === 'key_positive' ? '✓' : '✕' }}
+              </span>
             </div>
             <div class="flex">
               <Dropdown :options="actions(column)">
@@ -210,6 +233,7 @@
         </div>
       </template>
     </Dialog>
+    </div>
   </div>
 </template>
 <script setup>
@@ -217,9 +241,36 @@ import RefreshIcon from '@/components/Icons/RefreshIcon.vue'
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import { isTouchScreenDevice, colors, parseColor } from '@/utils'
+import { statusesStore } from '@/stores/statuses'
 import Draggable from 'vuedraggable'
 import { Dropdown, Popover, Dialog, FormControl, call, toast } from 'frappe-ui'
 import { computed, ref } from 'vue'
+
+const { getDealStatus, getLeadStatus } = statusesStore()
+
+// E5 (Bitrix24): ключевые (финальные) этапы = нативный type Won/Lost. Фильтр «В работе» их прячет.
+const hideFinalStages = ref(false)
+function stageKind(column) {
+  const dt = props.options?.doctype
+  const name = column?.column?.name
+  if (!name) return 'normal'
+  let type
+  try {
+    if (dt === 'CRM Deal') type = getDealStatus(name)?.type
+    else if (dt === 'CRM Lead') type = getLeadStatus(name)?.type
+  } catch (e) {
+    type = undefined
+  }
+  if (type === 'Won') return 'key_positive'
+  if (type === 'Lost') return 'key_negative'
+  return 'normal'
+}
+function isFinalStage(column) {
+  return stageKind(column) !== 'normal'
+}
+const hasFinalStages = computed(() =>
+  (columns.value || []).some((c) => isFinalStage(c)),
+)
 
 const props = defineProps({
   options: {
