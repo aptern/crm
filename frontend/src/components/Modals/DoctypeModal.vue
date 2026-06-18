@@ -53,7 +53,30 @@
                 <Button variant="ghost" class="w-7" icon="x" @click="show = false" />
               </div>
             </div>
-            <div class="flex-1 overflow-y-auto px-6 py-5">
+            <!-- B16: задача открывается в две части (детали слева | чат справа).
+                 Остальные сущности — обычный вертикальный скролл. -->
+            <div
+              v-if="isTaskDetail && !isMobileView"
+              class="flex flex-1 overflow-hidden"
+            >
+              <div
+                class="flex-1 overflow-y-auto border-r border-outline-gray-1 px-6 py-5"
+              >
+                <FieldLayout
+                  v-if="layout.data"
+                  :tabs="layout.data"
+                  :data="doc"
+                  :doctype="doctype"
+                />
+                <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
+              </div>
+              <div
+                class="w-2/5 min-w-80 shrink-0 overflow-y-auto bg-surface-gray-1 px-5 py-4"
+              >
+                <TaskActivityFeed :task="doc.name" :embedded="true" />
+              </div>
+            </div>
+            <div v-else class="flex-1 overflow-y-auto px-6 py-5">
               <FieldLayout
                 v-if="layout.data"
                 :tabs="layout.data"
@@ -61,10 +84,7 @@
                 :doctype="doctype"
               />
               <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
-              <TaskActivityFeed
-                v-if="doctype === 'CRM Task' && editMode && doc.name"
-                :task="doc.name"
-              />
+              <TaskActivityFeed v-if="isTaskDetail" :task="doc.name" />
             </div>
             <div class="shrink-0 border-t border-outline-gray-1 px-6 py-4">
               <div class="flex flex-row-reverse gap-2">
@@ -134,6 +154,11 @@ const layout = createResource({
 
 const error = ref(null)
 const editMode = computed(() => Boolean(document.doc?.name))
+
+// B16: открытая (сохранённая) задача показывает чат рядом с деталями
+const isTaskDetail = computed(
+  () => props.doctype === 'CRM Task' && editMode.value && Boolean(doc.value?.name),
+)
 
 const _create = createResource({
   url: 'frappe.client.insert',

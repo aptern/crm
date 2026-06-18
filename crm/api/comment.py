@@ -28,11 +28,20 @@ def notify_mentions(doc):
 		doctype = doc.reference_doctype
 		if doctype.startswith("CRM "):
 			doctype = doctype[4:].lower()
-		name = (
-			reference_doc.lead_name
-			if doctype == "lead"
-			else reference_doc.organization or reference_doc.lead_name
-		)
+		# nacifrah: защитно — ссылка может быть не на лид/сделку (напр. CRM Task),
+		# у которой нет lead_name/organization. Берём осмысленное имя без падения.
+		if doctype == "lead":
+			name = getattr(reference_doc, "lead_name", None)
+		else:
+			name = getattr(reference_doc, "organization", None) or getattr(
+				reference_doc, "lead_name", None
+			)
+		if not name:
+			name = (
+				getattr(reference_doc, "subject", None)
+				or getattr(reference_doc, "title", None)
+				or doc.reference_name
+			)
 		notification_text = f"""
             <div class="mb-2 leading-5 text-ink-gray-5">
                 <span class="font-medium text-ink-gray-9">{ owner }</span>
