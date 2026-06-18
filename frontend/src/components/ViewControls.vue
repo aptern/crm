@@ -175,6 +175,13 @@
           @input="onSearchInput"
           class="w-48"
         />
+        <!-- I12: быстрый пресет «Мои сделки» (владелец = я) -->
+        <Button
+          v-if="ownerField"
+          :variant="myDealsActive ? 'solid' : 'subtle'"
+          :label="doctype === 'CRM Lead' ? __('Мои лиды') : __('Мои сделки')"
+          @click="toggleMyDeals"
+        />
         <Filter
           v-model="list"
           :doctype="doctype"
@@ -331,6 +338,7 @@ import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
 import { viewsStore } from '@/stores/views'
 import { usersStore } from '@/stores/users'
+import { sessionStore } from '@/stores/session'
 import { getMeta } from '@/stores/meta'
 import { isEmoji } from '@/utils'
 import {
@@ -367,6 +375,7 @@ const { brand } = getSettings()
 const { $dialog, $socket } = globalStore()
 const { reload: reloadView, getDefaultView, getView } = viewsStore()
 const { isManager } = usersStore()
+const { user: sessionUser } = sessionStore()
 
 const list = defineModel({ type: Object, default: () => ({}) })
 const loadMore = defineModel('loadMore', { type: Boolean })
@@ -1381,6 +1390,26 @@ function applySearch() {
   updateFilter(filters)
 }
 const onSearchInput = useDebounceFn(applySearch, 400)
+
+// I12: быстрый пресет «Мои сделки» — фильтр по владельцу = текущий пользователь.
+const ownerField = computed(() =>
+  props.doctype === 'CRM Deal'
+    ? 'deal_owner'
+    : props.doctype === 'CRM Lead'
+      ? 'lead_owner'
+      : null,
+)
+const myDealsActive = computed(() => {
+  const f = list.value?.params?.filters || {}
+  return !!ownerField.value && f[ownerField.value] === sessionUser.value
+})
+function toggleMyDeals() {
+  if (!ownerField.value) return
+  let filters = { ...(list.value?.params?.filters || {}) }
+  if (filters[ownerField.value] === sessionUser.value) delete filters[ownerField.value]
+  else filters[ownerField.value] = sessionUser.value
+  updateFilter(filters)
+}
 
 function likeDoc({ name, liked }) {
   createResource({
