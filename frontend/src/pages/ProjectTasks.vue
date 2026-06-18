@@ -560,6 +560,7 @@ import ProjectHistory from '@/components/ProjectHistory.vue'
 import { useDoctypeModal } from '@/composables/doctypeModal'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
+import { storeToRefs } from 'pinia'
 import { formatDate, timeAgo } from '@/utils'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
@@ -581,7 +582,12 @@ import { useRouter, useRoute } from 'vue-router'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
-const { getUser, crmUsers, isManager } = usersStore()
+const _usersStore = usersStore()
+const { getUser, isManager } = _usersStore
+// I28: crmUsers — это Pinia-геттер; деструктуризация даёт снимок (массив), и
+// прежний `crmUsers.value` был undefined → в выборе исполнителя оставался только
+// «Снять». Берём через storeToRefs, чтобы `.value` отдавал реактивный список.
+const { crmUsers } = storeToRefs(_usersStore)
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 const { capture } = useTelemetry()
 
