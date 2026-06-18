@@ -18,7 +18,8 @@
          с data-column = имя финального этапа, статус ставится тем же путём updateColumn. -->
     <div
       v-if="dragging && finalStageColumns.length"
-      class="fixed inset-x-0 bottom-0 z-50 flex justify-center gap-3 border-t border-outline-gray-2 bg-surface-white/95 p-3 shadow-lg"
+      class="fixed bottom-0 right-0 z-50 flex justify-center gap-3 border-t border-outline-gray-2 bg-surface-white/95 px-3 py-2.5 shadow-lg"
+      :style="{ left: dragZoneLeft }"
     >
       <Draggable
         v-for="z in finalStageColumns"
@@ -27,12 +28,15 @@
         group="fields"
         item-key="name"
         :data-column="z.name"
-        class="flex min-w-52 items-center justify-center rounded-lg border-2 border-dashed py-6 text-base font-semibold"
-        :class="
+        class="flex min-w-48 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed text-sm font-semibold transition-all duration-200 ease-out"
+        :class="[
           z.kind === 'key_positive'
             ? 'border-green-400 bg-green-50 text-green-700'
-            : 'border-red-400 bg-red-50 text-red-700'
-        "
+            : 'border-red-400 bg-red-50 text-red-700',
+          hoveredZone === z.name ? 'h-14 shadow-md' : 'h-12',
+        ]"
+        @mouseenter="hoveredZone = z.name"
+        @mouseleave="hoveredZone = null"
       >
         <template #header>
           <div class="pointer-events-none flex items-center gap-1.5">
@@ -281,6 +285,7 @@ import { statusesStore } from '@/stores/statuses'
 import Draggable from 'vuedraggable'
 import { Dropdown, Popover, Dialog, FormControl, call, toast } from 'frappe-ui'
 import { computed, ref } from 'vue'
+import { useStorage } from '@vueuse/core'
 
 const { getDealStatus, getLeadStatus } = statusesStore()
 
@@ -313,6 +318,11 @@ const hasFinalStages = computed(() =>
 // механизмом updateColumn (зона — drop-таргет group="fields" с data-column).
 const dragging = ref(false)
 const zoneBucket = ref([])
+// I11: зона активна при наведении (плавный рост вверх); отступ слева — чтобы не
+// заходить на левое меню (220px развёрнуто / 48px свёрнуто, общий ключ с AppSidebar).
+const hoveredZone = ref(null)
+const _sidebarCollapsed = useStorage('isSidebarCollapsed', false)
+const dragZoneLeft = computed(() => (_sidebarCollapsed.value ? '48px' : '220px'))
 const finalStageColumns = computed(() =>
   (columns.value || [])
     .filter((c) => isFinalStage(c))
@@ -320,6 +330,7 @@ const finalStageColumns = computed(() =>
 )
 function onCardDragStart() {
   zoneBucket.value = []
+  hoveredZone.value = null
   dragging.value = true
 }
 function onCardDragEnd(d) {
