@@ -268,6 +268,7 @@ import { organizationsStore } from '@/stores/organizations'
 import { statusesStore } from '@/stores/statuses'
 import { callEnabled } from '@/composables/telephony'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
+import { formatRub } from '@/utils/ruFormat'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import { Tooltip, Avatar, Dropdown } from 'frappe-ui'
 import { useRoute } from 'vue-router'
@@ -404,7 +405,11 @@ function parseRows(rows, columns = []) {
       }
 
       if (fieldType && fieldType == 'Currency') {
-        _rows[row] = getFormattedCurrency(row, deal)
+        // I9: сумма сделки — российский формат (разряды пробелами, без копеек, ₽)
+        _rows[row] =
+          row === 'annual_revenue'
+            ? formatRub(deal[row])
+            : getFormattedCurrency(row, deal)
       }
 
       if (fieldType && fieldType == 'Float') {
