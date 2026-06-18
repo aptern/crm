@@ -236,6 +236,16 @@
                         </div>
                       </div>
                     </template>
+                    <!-- B14: создать новое кастомное поле прямо отсюда -->
+                    <template #footer="{ togglePopover }">
+                      <Button
+                        class="w-full"
+                        variant="ghost"
+                        :label="__('Создать новое поле')"
+                        iconLeft="plus"
+                        @click="(togglePopover(), openCreateField(column))"
+                      />
+                    </template>
                   </Autocomplete>
                 </div>
               </template>
@@ -269,6 +279,42 @@
       </div>
     </div>
   </div>
+
+  <!-- B14: диалог создания кастомного поля -->
+  <Dialog v-model="showCreateField" :options="{ title: __('Создать поле') }">
+    <template #body-content>
+      <div class="flex flex-col gap-3">
+        <FormControl
+          :label="__('Название поля')"
+          v-model="createFieldForm.label"
+          :placeholder="__('Например, Бюджет клиента')"
+        />
+        <FormControl
+          type="select"
+          :label="__('Тип поля')"
+          :options="fieldTypeOptions"
+          v-model="createFieldForm.fieldtype"
+        />
+        <FormControl
+          v-if="createFieldForm.fieldtype === 'Select'"
+          type="textarea"
+          :label="__('Варианты (по одному на строку)')"
+          v-model="createFieldForm.options"
+          :placeholder="'Вариант 1\nВариант 2'"
+        />
+        <ErrorMessage v-if="createFieldError" :message="createFieldError" />
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="showCreateField = false" />
+        <Button
+          variant="solid"
+          :label="__('Создать')"
+          :loading="creatingField"
+          @click="doCreateField"
+        />
+      </div>
+    </template>
+  </Dialog>
 </template>
 <script setup>
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
@@ -277,8 +323,8 @@ import Draggable from 'vuedraggable'
 import { getRandom } from '@/utils'
 import { getMeta } from '@/stores/meta'
 import { globalStore } from '@/stores/global'
-import { Dropdown } from 'frappe-ui'
-import { ref, computed, watch, nextTick } from 'vue'
+import { Dropdown, Dialog, FormControl, ErrorMessage, call, toast } from 'frappe-ui'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 
 const props = defineProps({
   doctype: { type: String, default: 'CRM Lead' },
@@ -288,6 +334,60 @@ const props = defineProps({
 const tabs = defineModel({ type: Array, default: () => [] })
 
 const { $dialog } = globalStore()
+
+// B14: создание кастомного поля из UI (без кода)
+const fieldTypeOptions = ref([])
+const showCreateField = ref(false)
+const creatingField = ref(false)
+const createFieldError = ref('')
+const createFieldColumn = ref(null)
+const createFieldForm = reactive({ label: '', fieldtype: 'Data', options: '' })
+async function openCreateField(column) {
+  createFieldColumn.value = column
+  createFieldError.value = ''
+  createFieldForm.label = ''
+  createFieldForm.fieldtype = 'Data'
+  createFieldForm.options = ''
+  if (!fieldTypeOptions.value.length) {
+    try {
+      fieldTypeOptions.value = await call('nacifrah.fields_api.get_allowed_fieldtypes')
+    } catch (e) {
+      fieldTypeOptions.value = []
+    }
+  }
+  showCreateField.value = true
+}
+async function doCreateField() {
+  createFieldError.value = ''
+  if (!createFieldForm.label.trim()) {
+    createFieldError.value = __('Укажите название поля')
+    return
+  }
+  creatingField.value = true
+  try {
+    const r = await call('nacifrah.fields_api.create_custom_field', {
+      doctype: props.doctype,
+      label: createFieldForm.label.trim(),
+      fieldtype: createFieldForm.fieldtype,
+      options:
+        createFieldForm.fieldtype === 'Select' ? createFieldForm.options : null,
+    })
+    if (createFieldColumn.value) {
+      createFieldColumn.value.fields.push({
+        label: r.label,
+        value: r.fieldname,
+        fieldname: r.fieldname,
+        fieldtype: r.fieldtype,
+      })
+    }
+    showCreateField.value = false
+    toast.success(__('Поле создано'))
+  } catch (e) {
+    createFieldError.value = e?.messages?.[0] || __('Не удалось создать поле')
+  } finally {
+    creatingField.value = false
+  }
+}
 
 const tabIndex = ref(0)
 const isDragging = ref(false)
