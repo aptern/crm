@@ -9,6 +9,39 @@ export default defineConfig(async ({ mode }) => {
   const isDev = mode === 'development'
   const config = {
     plugins: [
+      // A7: календарь с понедельника. frappe-ui компилируется из src — на этапе сборки
+      // заменяем захардкоженную шапку дней ['S'..] на понедельник-первый и ставим
+      // dayjs weekStart=1 (сетка дат). No-op, если строки не найдены (версия изменилась):
+      // ничего не меняется (без рассинхрона), сборка не падает.
+      {
+        name: 'nacifrah-monday-calendar',
+        enforce: 'pre',
+        transform(code, id) {
+          if (!id.includes('frappe-ui')) return null
+          if (id.includes('/DatePicker/') && id.endsWith('.vue')) {
+            if (code.includes("['S', 'M', 'T', 'W', 'T', 'F', 'S']")) {
+              return {
+                code: code
+                  .split("['S', 'M', 'T', 'W', 'T', 'F', 'S']")
+                  .join("['M', 'T', 'W', 'T', 'F', 'S', 'S']"),
+                map: null,
+              }
+            }
+          }
+          if (id.endsWith('/utils/dayjs.ts')) {
+            if (code.includes('_dayjs.extend(customParseFormat)')) {
+              return {
+                code: code.replace(
+                  '_dayjs.extend(customParseFormat)',
+                  "_dayjs.extend(customParseFormat)\n_dayjs.updateLocale('en', { weekStart: 1 })",
+                ),
+                map: null,
+              }
+            }
+          }
+          return null
+        },
+      },
       vue(),
       vueJsx(),
       VitePWA({
