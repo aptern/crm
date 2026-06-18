@@ -302,6 +302,8 @@
             class="flex-1 overflow-hidden"
           />
         </div>
+        <!-- I27: проект показываем снизу (#actions), не в середине. -->
+        <div v-else-if="fieldName === 'reference_docname'" class="hidden" />
         <!-- status/priority уже отрисованы выше (иконка/чип) — не дублируем сырым значением. -->
         <div
           v-else-if="!['status', 'priority'].includes(fieldName)"
@@ -313,7 +315,16 @@
     </template>
     <!-- Ссылка на сделку убрана с борта (B5) — она доступна внутри задачи. На борде только меню «…». -->
     <template #actions="{ itemName }">
-      <div class="flex items-center justify-end">
+      <div class="flex items-center justify-between gap-2">
+        <!-- I27: проект (сделка), к которому относится задача -->
+        <span
+          v-if="taskProjectName(itemName)"
+          class="truncate rounded bg-surface-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-6"
+          :title="taskProjectName(itemName)"
+        >
+          {{ taskProjectName(itemName) }}
+        </span>
+        <span v-else />
         <Dropdown
           class="flex items-center"
           :options="actions(itemName)"
@@ -613,7 +624,19 @@ async function saveStage() {
 }
 
 // Карточка на борде: показываем приоритет, исполнителя и дедлайн-чип
-const kanbanFields = JSON.stringify(['priority', 'assigned_to', 'due_date'])
+const kanbanFields = JSON.stringify([
+  'priority',
+  'assigned_to',
+  'due_date',
+  'reference_docname',
+])
+// I27: имя проекта (организация сделки), к которому относится задача — для карточки.
+function taskProjectName(itemName) {
+  const ref = getRow(itemName, 'reference_docname')?.label
+  if (!ref) return ''
+  const p = projects.data?.find((x) => x.name === ref)
+  return p ? projDisplay(p) : ref
+}
 
 function dueChipStyle(s) {
   const gray = { backgroundColor: '#f1f5f9', color: '#475569' }
