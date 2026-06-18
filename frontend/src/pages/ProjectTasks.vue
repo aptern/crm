@@ -122,6 +122,7 @@
     v-if="$route.params.viewType == 'kanban' && rows.length"
     v-model="tasks"
     :options="{
+      doctype: 'CRM Task',
       onClick: (row) => showTask(row.name),
       onNewClick: (column) => createTask(column),
       cardStyle: cardStyleFor,

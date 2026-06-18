@@ -32,6 +32,7 @@
     v-if="route.params.viewType == 'kanban'"
     v-model="leads"
     :options="{
+      doctype: 'CRM Lead',
       getRoute: (row) => ({
         name: 'Lead',
         params: { leadId: row.name },

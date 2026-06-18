@@ -178,6 +178,38 @@
         </template>
       </Autocomplete>
     </div>
+
+    <!-- B18: удаление колонки с карточками — предупреждение + перенос -->
+    <Dialog v-model="delDialog" :options="{ title: __('Удалить колонку') }">
+      <template #body-content>
+        <p class="text-sm text-ink-gray-7">
+          {{
+            __('В колонке «{0}» есть карточки ({1}). Куда их перенести?', [
+              delColumn?.column?.name,
+              delColumn?.column?.all_count,
+            ])
+          }}
+        </p>
+        <FormControl
+          class="mt-3"
+          type="select"
+          :label="__('Перенести в')"
+          v-model="delMoveTo"
+          :options="moveTargetOptions"
+        />
+        <div class="mt-4 flex justify-end gap-2">
+          <Button :label="__('Отмена')" @click="delDialog = false" />
+          <Button
+            variant="solid"
+            theme="red"
+            :label="__('Перенести и удалить')"
+            :loading="delBusy"
+            :disabled="!delMoveTo"
+            @click="confirmMoveAndDelete"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 <script setup>
@@ -186,10 +218,10 @@ import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import { isTouchScreenDevice, colors, parseColor } from '@/utils'
 import Draggable from 'vuedraggable'
-import { Dropdown, Popover } from 'frappe-ui'
-import { computed } from 'vue'
+import { Dropdown, Popover, Dialog, FormControl, call, toast } from 'frappe-ui'
+import { computed, ref } from 'vue'
 
-defineProps({
+const props = defineProps({
   options: {
     type: Object,
     default: () => ({
@@ -203,6 +235,55 @@ defineProps({
 const emit = defineEmits(['update', 'loadMore'])
 
 const kanban = defineModel({ type: Object })
+
+// B18: подтверждение удаления колонки с карточками + перенос их в другую колонку.
+const delDialog = ref(false)
+const delColumn = ref(null)
+const delMoveTo = ref('')
+const delBusy = ref(false)
+function confirmDeleteColumn(column) {
+  const allCount = column.column?.all_count || 0
+  const dt = props.options?.doctype
+  const cf = kanban.value?.data?.column_field
+  if (allCount > 0 && dt && cf) {
+    delColumn.value = column
+    const others = (columns.value || [])
+      .map((c) => c.column.name)
+      .filter((n) => n !== column.column.name && !columns.value.find((c) => c.column.name === n && c.column.delete))
+    delMoveTo.value = others[0] || ''
+    delDialog.value = true
+  } else {
+    doDeleteColumn(column)
+  }
+}
+function doDeleteColumn(column) {
+  column.column['delete'] = true
+  updateColumn()
+}
+async function confirmMoveAndDelete() {
+  if (!delMoveTo.value) return
+  delBusy.value = true
+  try {
+    await call('nacifrah.tasks_api.move_kanban_records', {
+      doctype: props.options?.doctype,
+      column_field: kanban.value?.data?.column_field,
+      from_value: delColumn.value.column.name,
+      to_value: delMoveTo.value,
+    })
+    doDeleteColumn(delColumn.value)
+    delDialog.value = false
+    updateColumn(null, true) // перезагрузить колонки/данные
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось перенести карточки'))
+  } finally {
+    delBusy.value = false
+  }
+}
+const moveTargetOptions = computed(() =>
+  (columns.value || [])
+    .filter((c) => !c.column.delete && c.column.name !== delColumn.value?.column?.name)
+    .map((c) => ({ label: c.column.name, value: c.column.name })),
+)
 
 const titleField = computed(() => {
   return kanban.value?.data?.title_field
@@ -247,10 +328,7 @@ function actions(column) {
         {
           label: __('Delete'),
           icon: 'trash-2',
-          onClick: () => {
-            column.column['delete'] = true
-            updateColumn()
-          },
+          onClick: () => confirmDeleteColumn(column),
         },
       ],
     },

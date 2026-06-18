@@ -32,6 +32,7 @@
     v-if="route.params.viewType == 'kanban'"
     v-model="deals"
     :options="{
+      doctype: 'CRM Deal',
       getRoute: (row) => ({
         name: 'Deal',
         params: { dealId: row.name },
