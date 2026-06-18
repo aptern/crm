@@ -267,6 +267,8 @@
     v-if="showLeadModal"
     v-model="showLeadModal"
     :defaults="defaults"
+    :openAfterCreate="false"
+    @afterCreate="leads?.reload?.()"
   />
 </template>
 
@@ -586,6 +588,7 @@ function showTask(name) {
       afterInsert: (d) => after(d, true),
       afterUpdate: after,
     },
+    popup: true, // I22: создание задачи — центральный попап
   })
 }
 

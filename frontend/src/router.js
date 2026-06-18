@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { viewsStore } from '@/stores/views'
+import { recordSlideOverStore } from '@/stores/recordSlideOver'
 
 const routes = [
   {
@@ -210,6 +211,19 @@ router.beforeEach(async (to, from, next) => {
     window.location.href = '/login?redirect-to=/crm'
   } else if (to.matched.length === 0) {
     next({ name: 'Invalid Page' })
+  } else if (
+    ['Deal', 'Lead'].includes(to.name) &&
+    from.name && // переход ВНУТРИ приложения (не прямая ссылка / не перезагрузка)
+    !to.query?.full // «full=1» — принудительно открыть на отдельной странице
+  ) {
+    // I10: клик по сделке/лиду в списке/канбане открывает right-slide-over
+    // поверх текущего списка, а не переход на отдельную страницу.
+    const { openRecord } = recordSlideOverStore()
+    openRecord(
+      to.name === 'Deal' ? 'CRM Deal' : 'CRM Lead',
+      to.name === 'Deal' ? to.params.dealId : to.params.leadId,
+    )
+    next(false)
   } else if (['Deal', 'Lead'].includes(to.name) && !to.hash) {
     let storageKey = to.name === 'Deal' ? 'lastDealTab' : 'lastLeadTab'
     const activeTab = localStorage.getItem(storageKey) || 'activity'

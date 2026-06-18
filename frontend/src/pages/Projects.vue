@@ -238,6 +238,8 @@
     v-if="showDealModal"
     v-model="showDealModal"
     :defaults="defaults"
+    :openAfterCreate="false"
+    @afterCreate="deals?.reload?.()"
   />
 </template>
 
@@ -549,6 +551,7 @@ function showTask(name) {
       afterInsert: (d) => after(d, true),
       afterUpdate: after,
     },
+    popup: true, // I22: создание задачи — центральный попап
   })
 }
 

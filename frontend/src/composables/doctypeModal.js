@@ -6,6 +6,8 @@ const name = ref('')
 const title = ref('')
 const defaults = ref({})
 const callbacks = ref({})
+// I22: создание сущности (задачи) показываем центральным попапом, а не slide-over.
+const popup = ref(false)
 
 function showModal({
   name: _name = null,
@@ -13,12 +15,14 @@ function showModal({
   title: _title = '',
   defaults: _defaults = {},
   callbacks: _callbacks = {},
+  popup: _popup = false,
 }) {
   name.value = _name
   doctype.value = _doctype
   title.value = _title
   defaults.value = _defaults
   callbacks.value = _callbacks
+  popup.value = _popup
   show.value = true
 }
 
@@ -33,6 +37,7 @@ export function useDoctypeModal() {
     name,
     title,
     defaults,
+    popup,
     showModal,
     triggerCallback,
   }

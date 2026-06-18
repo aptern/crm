@@ -60,6 +60,9 @@ import { useRouter } from 'vue-router'
 
 const props = defineProps({
   defaults: { type: Object, default: () => ({}) },
+  // I29: на борде создание НЕ открывает лид (он появляется на канбане);
+  // на онбординг/детальных экранах сохраняем переход (по умолчанию).
+  openAfterCreate: { type: Boolean, default: true },
 })
 
 const { user } = sessionStore()
@@ -68,6 +71,7 @@ const { getLeadStatus, statusOptions } = statusesStore()
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 
 const show = defineModel({ type: Boolean })
+const emit = defineEmits(['afterCreate'])
 const router = useRouter()
 const error = ref(null)
 const isLeadCreating = ref(false)
@@ -159,7 +163,11 @@ async function createNewLead() {
         isLeadCreating.value = false
         show.value = false
         lead.doc = {}
-        router.push({ name: 'Lead', params: { leadId: data.name } })
+        emit('afterCreate', data.name)
+        // I29: на борде не открываем — карточка просто появляется на канбане
+        if (props.openAfterCreate) {
+          router.push({ name: 'Lead', params: { leadId: data.name } })
+        }
         updateOnboardingStep('create_first_lead', true, false, () => {
           localStorage.setItem('firstLead' + user, data.name)
         })

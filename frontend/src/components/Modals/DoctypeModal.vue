@@ -6,17 +6,25 @@
     <Transition name="so-overlay">
       <div v-if="show" class="fixed inset-0 z-40">
         <div class="absolute inset-0 bg-black/30" @click="show = false" />
-        <Transition name="so-panel">
+        <Transition :name="asPopup ? 'so-pop' : 'so-panel'">
           <div
             v-if="show"
-            class="absolute right-0 top-0 flex h-full flex-col bg-surface-modal shadow-2xl transition-[width] duration-200"
-            :style="{
-              width: isMobileView
-                ? '100%'
-                : fullscreen
-                  ? 'calc(100% - 15rem)'
-                  : '50%',
-            }"
+            :class="
+              asPopup
+                ? 'absolute left-1/2 top-1/2 flex max-h-[88vh] w-[min(640px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-surface-modal shadow-2xl'
+                : 'absolute right-0 top-0 flex h-full flex-col bg-surface-modal shadow-2xl transition-[width] duration-200'
+            "
+            :style="
+              asPopup
+                ? {}
+                : {
+                    width: isMobileView
+                      ? '100%'
+                      : fullscreen
+                        ? 'calc(100% - 15rem)'
+                        : '50%',
+                  }
+            "
           >
             <div
               class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-6 py-4"
@@ -43,7 +51,7 @@
                   @click="openQuickEntryModal"
                 />
                 <Button
-                  v-if="!isMobileView"
+                  v-if="!isMobileView && !asPopup"
                   variant="ghost"
                   class="w-7"
                   :icon="fullscreen ? 'minimize-2' : 'maximize-2'"
@@ -123,6 +131,8 @@ const props = defineProps({
   doctype: { type: String, default: '' },
   docname: { type: String, default: '' },
   defaults: { type: Object, default: () => ({}) },
+  // I22: центральный попап (используется при создании задачи)
+  popup: { type: Boolean, default: false },
 })
 
 const show = defineModel({ type: Boolean })
@@ -154,6 +164,9 @@ const layout = createResource({
 
 const error = ref(null)
 const editMode = computed(() => Boolean(document.doc?.name))
+
+// I22: попап показываем только в режиме создания; открытие/детали остаются slide-over.
+const asPopup = computed(() => props.popup && !editMode.value)
 
 // B16: открытая (сохранённая) задача показывает чат рядом с деталями
 const isTaskDetail = computed(
@@ -253,5 +266,14 @@ onMounted(async () => {
 .so-panel-enter-from,
 .so-panel-leave-to {
   transform: translateX(100%);
+}
+/* I22: попап — плавное появление по центру (transform занят центровкой, анимируем opacity) */
+.so-pop-enter-active,
+.so-pop-leave-active {
+  transition: opacity 0.18s ease;
+}
+.so-pop-enter-from,
+.so-pop-leave-to {
+  opacity: 0;
 }
 </style>

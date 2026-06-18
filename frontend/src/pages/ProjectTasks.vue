@@ -1159,6 +1159,7 @@ function createTask(column) {
     title: 'Task',
     defaults: defaults,
     callbacks: taskCallbacks,
+    popup: true, // I22: создание задачи — центральный попап
   })
 }
 

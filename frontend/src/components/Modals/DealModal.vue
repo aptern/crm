@@ -87,12 +87,16 @@ import { useRouter } from 'vue-router'
 
 const props = defineProps({
   defaults: { type: Object, default: () => ({}) },
+  // I29: на бордах создание НЕ открывает новую сделку (она появляется на канбане);
+  // на детальных/онбординг-экранах сохраняем переход на запись (по умолчанию).
+  openAfterCreate: { type: Boolean, default: true },
 })
 
 const { getUser, isManager } = usersStore()
 const { getDealStatus, statusOptions } = statusesStore()
 
 const show = defineModel({ type: Boolean })
+const emit = defineEmits(['afterCreate'])
 const router = useRouter()
 const error = ref(null)
 
@@ -215,7 +219,11 @@ async function createDeal() {
       capture('deal_created')
       isDealCreating.value = false
       show.value = false
-      router.push({ name: 'Deal', params: { dealId: name } })
+      emit('afterCreate', name)
+      // I29: на бордах не открываем — карточка просто появляется на канбане
+      if (props.openAfterCreate) {
+        router.push({ name: 'Deal', params: { dealId: name } })
+      }
     },
     onError(err) {
       isDealCreating.value = false

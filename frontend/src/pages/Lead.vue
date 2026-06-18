@@ -1,5 +1,5 @@
 <template>
-  <LayoutHeader>
+  <LayoutHeader v-if="!embedded">
     <template #left-header>
       <Breadcrumbs :items="breadcrumbs">
         <template #prefix="{ item }">
@@ -300,6 +300,8 @@ const router = useRouter()
 
 const props = defineProps({
   leadId: { type: String, required: true },
+  // I10: карточка рендерится внутри right-slide-over (без перехода на страницу).
+  embedded: { type: Boolean, default: false },
 })
 
 const reload = ref(false)
