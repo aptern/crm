@@ -334,7 +334,7 @@ import {
   FeatherIcon,
   usePageMeta,
 } from 'frappe-ui'
-import { computed, ref, onMounted, onUnmounted, watch, h, markRaw } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, h, markRaw, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import { isMobileView } from '@/composables/settings'
@@ -520,11 +520,19 @@ function getParams() {
   }
 }
 
+// A8: фикс гонки пустой загрузки — если reload вызван во время загрузки, не теряем
+// его, а повторяем после завершения (иначе борд мог остаться пустым до F5).
+let _pendingReload = false
+
 list.value = createResource({
   url: 'crm.api.doc.get_data',
   params: getParams(),
   cache: [props.doctype, route.query.view, route.params.viewType],
   onSuccess(data) {
+    if (_pendingReload) {
+      _pendingReload = false
+      nextTick(() => reload())
+    }
     let cv = getView(route.query.view, route.params.viewType, props.doctype)
     let params = list.value.params ? list.value.params : getParams()
     defaultParams.value = {
@@ -554,7 +562,10 @@ onMounted(() => useDebounceFn(reload, 100)())
 const isLoading = computed(() => list.value?.loading)
 
 function reload() {
-  if (isLoading.value) return
+  if (isLoading.value) {
+    _pendingReload = true // A8: дозагрузим после текущей загрузки, не теряем reload
+    return
+  }
   list.value.params = getParams()
   list.value.reload()
 }
