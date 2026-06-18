@@ -1,65 +1,86 @@
 <template>
-  <Dialog v-model="show" :options="{ size: doctype === 'CRM Task' ? '3xl' : 'xl' }">
-    <template #body>
-      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
-        <div class="mb-5 flex items-center justify-between">
-          <div class="flex gap-2 items-center">
-            <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
-              {{
-                editMode
-                  ? __('Edit ' + (doctypeTitle || doctype))
-                  : __('Create ' + (doctypeTitle || doctype))
-              }}
-            </h3>
+  <!-- A4/B11: крупные сущности (создание/деталь задачи и др.) выезжают справа панелью,
+       50% ширины, на всю высоту, скролл внутри, тоггл «на весь экран» (до левого меню),
+       клик по фону — закрыть. -->
+  <Teleport to="body">
+    <Transition name="so-overlay">
+      <div v-if="show" class="fixed inset-0 z-40">
+        <div class="absolute inset-0 bg-black/30" @click="show = false" />
+        <Transition name="so-panel">
+          <div
+            v-if="show"
+            class="absolute right-0 top-0 flex h-full flex-col bg-surface-modal shadow-2xl transition-[width] duration-200"
+            :style="{
+              width: isMobileView
+                ? '100%'
+                : fullscreen
+                  ? 'calc(100% - 15rem)'
+                  : '50%',
+            }"
+          >
+            <div
+              class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-6 py-4"
+            >
+              <h3 class="text-xl font-semibold leading-6 text-ink-gray-9">
+                {{
+                  editMode
+                    ? __('Edit ' + (doctypeTitle || doctype))
+                    : __('Create ' + (doctypeTitle || doctype))
+                }}
+              </h3>
+              <div class="flex items-center gap-1">
+                <CustomActions
+                  v-if="document.actions?.length"
+                  :actions="document.actions"
+                  :close="() => (show = false)"
+                />
+                <Button
+                  v-if="isManager() && !isMobileView"
+                  variant="ghost"
+                  class="w-7"
+                  :tooltip="__('Edit Fields Layout')"
+                  :icon="EditIcon"
+                  @click="openQuickEntryModal"
+                />
+                <Button
+                  v-if="!isMobileView"
+                  variant="ghost"
+                  class="w-7"
+                  :icon="fullscreen ? 'minimize-2' : 'maximize-2'"
+                  :tooltip="fullscreen ? __('Свернуть') : __('На весь экран')"
+                  @click="fullscreen = !fullscreen"
+                />
+                <Button variant="ghost" class="w-7" icon="x" @click="show = false" />
+              </div>
+            </div>
+            <div class="flex-1 overflow-y-auto px-6 py-5">
+              <FieldLayout
+                v-if="layout.data"
+                :tabs="layout.data"
+                :data="doc"
+                :doctype="doctype"
+              />
+              <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
+              <TaskActivityFeed
+                v-if="doctype === 'CRM Task' && editMode && doc.name"
+                :task="doc.name"
+              />
+            </div>
+            <div class="shrink-0 border-t border-outline-gray-1 px-6 py-4">
+              <div class="flex flex-row-reverse gap-2">
+                <Button
+                  variant="solid"
+                  :label="editMode ? __('Update') : __('Create')"
+                  :loading="editMode ? document.save.loading : create.loading"
+                  @click="editMode ? update() : create()"
+                />
+              </div>
+            </div>
           </div>
-          <div class="flex items-center gap-1">
-            <CustomActions
-              v-if="document.actions?.length"
-              :actions="document.actions"
-              :close="() => (show = false)"
-            />
-            <Button
-              v-if="isManager() && !isMobileView"
-              variant="ghost"
-              class="w-7"
-              :tooltip="__('Edit Fields Layout')"
-              :icon="EditIcon"
-              @click="openQuickEntryModal"
-            />
-            <Button
-              variant="ghost"
-              class="w-7"
-              icon="x"
-              @click="show = false"
-            />
-          </div>
-        </div>
-        <div>
-          <FieldLayout
-            v-if="layout.data"
-            :tabs="layout.data"
-            :data="doc"
-            :doctype="doctype"
-          />
-          <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
-          <TaskActivityFeed
-            v-if="doctype === 'CRM Task' && editMode && doc.name"
-            :task="doc.name"
-          />
-        </div>
+        </Transition>
       </div>
-      <div class="px-4 pb-7 pt-4 sm:px-6">
-        <div class="flex flex-row-reverse gap-2">
-          <Button
-            variant="solid"
-            :label="editMode ? __('Update') : __('Create')"
-            :loading="editMode ? document.save.loading : create.loading"
-            @click="editMode ? update() : create()"
-          />
-        </div>
-      </div>
-    </template>
-  </Dialog>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -85,6 +106,12 @@ const props = defineProps({
 })
 
 const show = defineModel({ type: Boolean })
+
+// B11: «на весь экран» (до левого меню) ↔ 50%. Сбрасываем при закрытии.
+const fullscreen = ref(false)
+watch(show, (v) => {
+  if (!v) fullscreen.value = false
+})
 
 const emit = defineEmits(['afterInsert', 'afterUpdate'])
 
@@ -184,3 +211,22 @@ onMounted(async () => {
   await triggerOnRender()
 })
 </script>
+
+<style scoped>
+.so-overlay-enter-active,
+.so-overlay-leave-active {
+  transition: opacity 0.2s ease;
+}
+.so-overlay-enter-from,
+.so-overlay-leave-to {
+  opacity: 0;
+}
+.so-panel-enter-active,
+.so-panel-leave-active {
+  transition: transform 0.25s ease;
+}
+.so-panel-enter-from,
+.so-panel-leave-to {
+  transform: translateX(100%);
+}
+</style>
