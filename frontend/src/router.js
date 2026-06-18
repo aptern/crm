@@ -35,6 +35,11 @@ const routes = [
     component: () => import('@/pages/Employees.vue'),
   },
   {
+    path: '/kb',
+    name: 'KnowledgeBase',
+    component: () => import('@/pages/KnowledgeBase.vue'),
+  },
+  {
     path: '/departments',
     name: 'Departments',
     component: () => import('@/pages/Departments.vue'),

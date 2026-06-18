@@ -42,7 +42,7 @@
         </SidebarLink>
         <SidebarLink
           :label="__('База знаний')"
-          external="/wiki"
+          :to="{ name: 'KnowledgeBase' }"
           :isCollapsed="isSidebarCollapsed"
           class="mx-2 my-[1.5px]"
         >
