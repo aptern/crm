@@ -98,6 +98,13 @@
             @click="showHistory = true"
           />
           <Button
+            v-if="isManager()"
+            variant="ghost"
+            :label="__('Регулярные задачи')"
+            iconLeft="repeat"
+            @click="openRecurDialog"
+          />
+          <Button
             v-if="groupBy === 'stage' && $route.params.viewType === 'kanban' && isManager()"
             variant="ghost"
             :label="__('Добавить этап')"
@@ -445,6 +452,93 @@
       <div class="mt-4 flex justify-end gap-2">
         <Button :label="__('Отмена')" @click="renameDialog = false" />
         <Button variant="solid" :label="__('Сохранить')" :loading="renameSaving" @click="saveRename" />
+      </div>
+    </template>
+  </Dialog>
+
+  <!-- I21: регулярные задачи -->
+  <Dialog v-model="recurDialog" :options="{ title: __('Регулярные задачи'), size: 'xl' }">
+    <template #body-content>
+      <div class="flex flex-col gap-3">
+        <!-- форма создания -->
+        <div class="rounded-lg border border-outline-gray-2 p-3">
+          <div class="mb-2 text-sm font-medium text-ink-gray-7">{{ __('Новая регулярная задача') }}</div>
+          <div class="flex flex-col gap-2">
+            <FormControl
+              :label="__('Название задачи')"
+              v-model="recurForm.task_title"
+              :placeholder="__('Например, Еженедельный отчёт')"
+            />
+            <div class="flex gap-2">
+              <FormControl
+                class="flex-1"
+                type="select"
+                :label="__('Повторять')"
+                :options="recurFreqOptions"
+                v-model="recurForm.frequency"
+              />
+              <FormControl
+                v-if="recurForm.frequency === 'Weekly'"
+                class="w-28"
+                type="select"
+                :label="__('День недели')"
+                :options="[
+                  { value: 1, label: 'Пн' },
+                  { value: 2, label: 'Вт' },
+                  { value: 3, label: 'Ср' },
+                  { value: 4, label: 'Чт' },
+                  { value: 5, label: 'Пт' },
+                  { value: 6, label: 'Сб' },
+                  { value: 7, label: 'Вс' },
+                ]"
+                v-model="recurForm.weekday"
+              />
+              <FormControl
+                v-if="recurForm.frequency === 'Monthly'"
+                class="w-24"
+                type="number"
+                :label="__('Число')"
+                v-model="recurForm.day_of_month"
+              />
+              <FormControl
+                class="w-28"
+                type="select"
+                :label="__('Приоритет')"
+                :options="[
+                  { value: 'Urgent', label: 'Критичный' },
+                  { value: 'High', label: 'Высокий' },
+                  { value: 'Medium', label: 'Средний' },
+                  { value: 'Low', label: 'Низкий' },
+                ]"
+                v-model="recurForm.priority"
+              />
+              <FormControl
+                class="w-28"
+                type="number"
+                :label="__('Срок, дней')"
+                v-model="recurForm.due_in_days"
+              />
+            </div>
+            <ErrorMessage v-if="recurErr" :message="recurErr" />
+            <div class="flex justify-end">
+              <Button variant="solid" :label="__('Добавить')" iconLeft="plus" :loading="recurSaving" @click="createRecur" />
+            </div>
+          </div>
+        </div>
+        <!-- список -->
+        <div v-if="recurList.length" class="flex flex-col gap-1.5">
+          <div
+            v-for="r in recurList"
+            :key="r.name"
+            class="flex items-center gap-2 rounded border border-outline-gray-1 px-2 py-1.5"
+          >
+            <FeatherIcon name="repeat" class="h-4 w-4 shrink-0 text-ink-gray-4" />
+            <span class="flex-1 truncate text-sm text-ink-gray-8">{{ r.task_title }}</span>
+            <span class="text-xs text-ink-gray-5">{{ recurFreqLabel(r.frequency) }}</span>
+            <Button variant="ghost" size="sm" icon="trash-2" @click="deleteRecur(r.name)" />
+          </div>
+        </div>
+        <div v-else class="text-sm text-ink-gray-5">{{ __('Пока нет регулярных задач.') }}</div>
       </div>
     </template>
   </Dialog>
@@ -1086,6 +1180,86 @@ async function deleteTask(name) {
     doctype: 'CRM Task',
     name,
   })
+}
+
+// I21: регулярные задачи — список + создание/удаление (бэкенд nacifrah.automation.*)
+const recurDialog = ref(false)
+const recurList = ref([])
+const recurErr = ref('')
+const recurSaving = ref(false)
+const recurForm = ref({
+  task_title: '',
+  frequency: 'Weekdays',
+  weekday: 1,
+  day_of_month: 1,
+  due_in_days: 0,
+  priority: 'Medium',
+})
+const recurFreqOptions = [
+  { value: 'Daily', label: 'Каждый день' },
+  { value: 'Weekdays', label: 'Только будни (Пн–Пт)' },
+  { value: 'Weekly', label: 'Раз в неделю' },
+  { value: 'Monthly', label: 'Раз в месяц' },
+]
+function recurFreqLabel(fr) {
+  return recurFreqOptions.find((o) => o.value === fr)?.label || fr
+}
+async function loadRecur() {
+  try {
+    const proj = selected.value.length === 1 ? selected.value[0] : null
+    recurList.value =
+      (await call('nacifrah.automation.list_recurring_tasks', proj ? { project: proj } : {})) || []
+  } catch (e) {
+    recurList.value = []
+  }
+}
+function openRecurDialog() {
+  recurErr.value = ''
+  recurForm.value = {
+    task_title: '',
+    frequency: 'Weekdays',
+    weekday: 1,
+    day_of_month: 1,
+    due_in_days: 0,
+    priority: 'Medium',
+  }
+  recurDialog.value = true
+  loadRecur()
+}
+async function createRecur() {
+  recurErr.value = ''
+  if (!recurForm.value.task_title.trim()) {
+    recurErr.value = __('Введите название задачи')
+    return
+  }
+  recurSaving.value = true
+  try {
+    const proj = selected.value.length === 1 ? selected.value[0] : null
+    await call('nacifrah.automation.create_recurring_task', {
+      task_title: recurForm.value.task_title.trim(),
+      frequency: recurForm.value.frequency,
+      project: proj || '',
+      priority: recurForm.value.priority,
+      weekday: recurForm.value.weekday,
+      day_of_month: recurForm.value.day_of_month,
+      due_in_days: recurForm.value.due_in_days,
+    })
+    recurForm.value.task_title = ''
+    await loadRecur()
+    toast.success(__('Регулярная задача создана'))
+  } catch (e) {
+    recurErr.value = e?.messages?.[0] || __('Не удалось создать')
+  } finally {
+    recurSaving.value = false
+  }
+}
+async function deleteRecur(name) {
+  try {
+    await call('nacifrah.automation.delete_recurring_task', { name })
+    await loadRecur()
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось удалить'))
+  }
 }
 
 function redirect(doctype, docname) {
