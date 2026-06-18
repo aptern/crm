@@ -48,7 +48,64 @@
               >
                 <FeatherIcon name="menu" class="h-3 w-3" />
               </span>
+              <!-- A1.2: блок «Воронки» — перетаскивается ЦЕЛИКОМ как один элемент меню -->
+              <div
+                v-if="it.isFunnelsBlock"
+                class="mx-2 my-1.5 w-full rounded-lg bg-surface-gray-2 p-1"
+              >
+                <div
+                  v-if="!isSidebarCollapsed"
+                  class="px-2 pb-0.5 pt-1 text-xs font-semibold uppercase text-ink-gray-5"
+                >
+                  {{ __('Воронки') }}
+                </div>
+                <!-- A1.3: порядок воронок меняется внутри блока (своя ручка) -->
+                <Draggable
+                  :list="orderedFunnels"
+                  item-key="id"
+                  handle=".funnel-grip"
+                  :disabled="isSidebarCollapsed"
+                  class="flex flex-col"
+                  @end="onFunnelsReorder"
+                >
+                  <template #item="{ element: fn }">
+                    <div class="group/fnl relative flex items-center">
+                      <span
+                        v-if="!isSidebarCollapsed"
+                        class="funnel-grip absolute -left-0.5 z-10 hidden cursor-grab text-ink-gray-4 group-hover/fnl:block active:cursor-grabbing"
+                        :title="__('Перетащить')"
+                      >
+                        <FeatherIcon name="menu" class="h-3 w-3" />
+                      </span>
+                      <SidebarLink
+                        :label="__(fn.label)"
+                        :to="fn.to"
+                        :isCollapsed="isSidebarCollapsed"
+                        class="my-[1.5px] w-full"
+                      >
+                        <template #icon>
+                          <component :is="fn.icon" class="h-4 w-4" />
+                        </template>
+                      </SidebarLink>
+                    </div>
+                  </template>
+                </Draggable>
+                <!-- «Параметры воронок» — всегда внизу блока -->
+                <SidebarLink
+                  v-if="isManager()"
+                  :label="__('Параметры воронок')"
+                  :to="{ name: 'Funnels' }"
+                  :isCollapsed="isSidebarCollapsed"
+                  class="my-[1.5px] text-ink-gray-6"
+                >
+                  <template #icon>
+                    <FeatherIcon name="sliders" class="h-4 w-4" />
+                  </template>
+                </SidebarLink>
+              </div>
+              <!-- обычный кастом-пункт -->
               <SidebarLink
+                v-else
                 :label="__(it.label)"
                 :to="it.to"
                 :isCollapsed="isSidebarCollapsed"
@@ -68,47 +125,6 @@
         >
           {{ __('Применить порядок меню для всех') }}
         </button>
-        <!-- E2: воронки — выделенный блок (Лиды + Сделки + кастомные воронки),
-             внизу — «Параметры воронок» (редактор). Новые воронки появляются выше. -->
-        <div class="mx-2 my-1.5 rounded-lg bg-surface-gray-2 p-1">
-          <div
-            v-if="!isSidebarCollapsed"
-            class="px-2 pb-0.5 pt-1 text-xs font-semibold uppercase text-ink-gray-5"
-          >
-            {{ __('Воронки') }}
-          </div>
-          <SidebarLink
-            :label="__('Лиды')"
-            :to="{ name: 'Leads' }"
-            :isCollapsed="isSidebarCollapsed"
-            class="my-[1.5px]"
-          >
-            <template #icon>
-              <LeadsIcon class="h-4 w-4" />
-            </template>
-          </SidebarLink>
-          <SidebarLink
-            :label="__('Сделки')"
-            :to="{ name: 'Deals' }"
-            :isCollapsed="isSidebarCollapsed"
-            class="my-[1.5px]"
-          >
-            <template #icon>
-              <DealsIcon class="h-4 w-4" />
-            </template>
-          </SidebarLink>
-          <SidebarLink
-            v-if="isManager()"
-            :label="__('Параметры воронок')"
-            :to="{ name: 'Funnels' }"
-            :isCollapsed="isSidebarCollapsed"
-            class="my-[1.5px] text-ink-gray-6"
-          >
-            <template #icon>
-              <FeatherIcon name="sliders" class="h-4 w-4" />
-            </template>
-          </SidebarLink>
-        </div>
       </div>
       <div v-for="view in allViews" :key="view.label">
         <div class="mx-2 my-1.5" />
@@ -462,10 +478,41 @@ const { users, isManager } = usersStore()
 const _allCustomNav = [
   { id: 'Projects', label: 'Проекты', to: { name: 'Projects' }, icon: 'folder' },
   { id: 'KnowledgeBase', label: 'База знаний', to: { name: 'KnowledgeBase' }, icon: 'book-open' },
+  // A1.2: блок «Воронки» — единый перетаскиваемый элемент среди пунктов меню
+  { id: 'Funnels', isFunnelsBlock: true },
   { id: 'Employees', label: 'Сотрудники', to: { name: 'Employees' }, icon: 'users', managerOnly: true },
   { id: 'Departments', label: 'Отделы', to: { name: 'Departments' }, icon: 'git-merge', managerOnly: true },
   { id: 'Permissions', label: 'Права доступа', to: { name: 'Permissions' }, icon: 'shield', managerOnly: true },
 ]
+// A1.3: порядок воронок внутри блока (Лиды/Сделки + будущие кастомные); «Параметры» закреплены внизу
+const FUNNELS_ORDER_KEY = 'nacifrah_funnels_order'
+const _allFunnels = [
+  { id: 'Leads', label: 'Лиды', to: { name: 'Leads' }, icon: LeadsIcon },
+  { id: 'Deals', label: 'Сделки', to: { name: 'Deals' }, icon: DealsIcon },
+]
+const funnelsOrder = ref([])
+const orderedFunnels = ref([])
+function _rebuildFunnels() {
+  const pos = (id) => {
+    const i = funnelsOrder.value.indexOf(id)
+    return i === -1 ? 999 : i
+  }
+  orderedFunnels.value = [..._allFunnels].sort((a, b) => pos(a.id) - pos(b.id))
+}
+_rebuildFunnels()
+async function onFunnelsReorder() {
+  const order = orderedFunnels.value.map((it) => it.id)
+  funnelsOrder.value = order
+  try {
+    await call('nacifrah.menu.set_menu_order', {
+      order: JSON.stringify(order),
+      scope: 'me',
+      key: FUNNELS_ORDER_KEY,
+    })
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить порядок воронок'))
+  }
+}
 const menuOrder = ref([])
 const orderedCustomNav = ref([])
 function _rebuildNav() {
@@ -528,6 +575,13 @@ onMounted(async () => {
     stdOrder.value = []
   }
   _rebuildStdViews()
+  try {
+    const r3 = await call('nacifrah.menu.get_menu_order', { key: FUNNELS_ORDER_KEY })
+    funnelsOrder.value = r3?.order || []
+  } catch (e) {
+    funnelsOrder.value = []
+  }
+  _rebuildFunnels()
 })
 async function onNavReorder() {
   const order = orderedCustomNav.value.map((it) => it.id)
