@@ -290,7 +290,9 @@ import { useStorage } from '@vueuse/core'
 const { getDealStatus, getLeadStatus } = statusesStore()
 
 // E5 (Bitrix24): ключевые (финальные) этапы = нативный type Won/Lost. Фильтр «В работе» их прячет.
-const hideFinalStages = ref(false)
+// I7: «в работе» включён ПО УМОЛЧАНИЮ — финальные (Won/Lost) этапы скрыты при входе
+// (на бордах без финальных этапов фильтр не показывается и ничего не скрывает).
+const hideFinalStages = ref(true)
 function stageKind(column) {
   const dt = props.options?.doctype
   const name = column?.column?.name

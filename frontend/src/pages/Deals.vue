@@ -26,6 +26,7 @@
     :filters="{ nacifrah_is_project: 0 }"
     :options="{
       allowedViews: ['list', 'group_by', 'kanban'],
+      defaultKanbanFields: dealKanbanFields,
     }"
   />
   <KanbanView
@@ -110,7 +111,7 @@
 
     <template #fields="{ fieldName, itemName }">
       <div
-        v-if="getRow(itemName, fieldName).label"
+        v-if="getRow(itemName, fieldName).label && fieldName !== 'creation'"
         class="truncate flex items-center gap-2"
       >
         <div v-if="fieldName === 'status'">
@@ -176,26 +177,10 @@
 
     <template #actions="{ itemName }">
       <div class="flex gap-2 items-center justify-between">
-        <div class="text-ink-gray-5 flex items-center gap-1.5">
-          <EmailAtIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_email_count').label">
-            {{ getRow(itemName, '_email_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <NoteIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_note_count').label">
-            {{ getRow(itemName, '_note_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <TaskIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_task_count').label">
-            {{ getRow(itemName, '_task_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <CommentIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_comment_count').label">
-            {{ getRow(itemName, '_comment_count').label }}
-          </span>
+        <!-- I13: вместо 4 иконок — дата и время создания сделки -->
+        <div class="flex items-center gap-1 text-xs text-ink-gray-4">
+          <FeatherIcon name="clock" class="h-3.5 w-3.5" />
+          <span>{{ getRow(itemName, 'creation').label }}</span>
         </div>
         <Dropdown
           class="flex items-center gap-2"
@@ -285,6 +270,15 @@ const { capture } = useTelemetry()
 const { showModal } = useDoctypeModal()
 
 const route = useRoute()
+
+// I13: поля карточки сделки по умолчанию — сумма, телефон, исполнитель + дата создания
+// (дата показывается снизу карточки в #actions; в середине #fields она скрыта).
+const dealKanbanFields = JSON.stringify([
+  'annual_revenue',
+  'mobile_no',
+  '_assign',
+  'creation',
+])
 
 const dealsListView = ref(null)
 const showDealModal = ref(false)
@@ -467,7 +461,8 @@ function parseRows(rows, columns = []) {
         }))
       } else if (['modified', 'creation'].includes(row)) {
         _rows[row] = {
-          label: formatDate(deal[row]),
+          // I13: дата создания с временем (на карточке сделки показываем «дата+время»)
+          label: formatDate(deal[row], '', true, true),
           timeAgo: __(timeAgo(deal[row])),
         }
       } else if (
