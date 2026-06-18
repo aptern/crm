@@ -137,15 +137,47 @@
             </div>
           </template>
           <nav class="flex flex-col">
-            <SidebarLink
-              v-for="link in view.views"
-              :key="link.label"
-              :icon="link.icon"
-              :label="__(link.label)"
-              :to="link.to"
-              :isCollapsed="isSidebarCollapsed"
-              class="mx-2 my-[1.5px]"
-            />
+            <!-- A1-остаток: стандартные разделы (Контакты/Заметки/Звонки/Дашборд…)
+                 перетаскиваются за ручку, порядок сохраняется per-user. -->
+            <Draggable
+              v-if="view.name === 'All Views'"
+              :list="orderedStdViews"
+              item-key="label"
+              handle=".nav-grip"
+              :disabled="isSidebarCollapsed"
+              class="flex flex-col"
+              @end="onStdReorder"
+            >
+              <template #item="{ element: link }">
+                <div class="group/nav relative flex items-center">
+                  <span
+                    v-if="!isSidebarCollapsed"
+                    class="nav-grip absolute -left-0.5 z-10 hidden cursor-grab text-ink-gray-4 group-hover/nav:block active:cursor-grabbing"
+                    :title="__('Перетащить')"
+                  >
+                    <FeatherIcon name="menu" class="h-3 w-3" />
+                  </span>
+                  <SidebarLink
+                    :icon="link.icon"
+                    :label="__(link.label)"
+                    :to="link.to"
+                    :isCollapsed="isSidebarCollapsed"
+                    class="mx-2 my-[1.5px] w-full"
+                  />
+                </div>
+              </template>
+            </Draggable>
+            <template v-else>
+              <SidebarLink
+                v-for="link in view.views"
+                :key="link.label"
+                :icon="link.icon"
+                :label="__(link.label)"
+                :to="link.to"
+                :isCollapsed="isSidebarCollapsed"
+                class="mx-2 my-[1.5px]"
+              />
+            </template>
           </nav>
         </Section>
       </div>
@@ -444,6 +476,43 @@ function _rebuildNav() {
   }
   orderedCustomNav.value = [...avail].sort((a, b) => pos(a.id) - pos(b.id))
 }
+
+// A1-остаток: перетаскивание СТАНДАРТНЫХ разделов (Контакты/Заметки/Звонки/Дашборд…)
+// в секции «All Views». Порядок хранится отдельным ключом per-user.
+const STD_VIEWS_ORDER_KEY = 'nacifrah_stdviews_order'
+const stdOrder = ref([])
+const orderedStdViews = ref([])
+function _rebuildStdViews() {
+  const avail = links.filter((link) => {
+    // Лиды/Сделки живут в выделенном блоке «Воронки» — здесь их нет.
+    if (link.label === 'Leads' || link.label === 'Deals') return false
+    if (link.condition) return link.condition()
+    return true
+  })
+  const pos = (label) => {
+    const i = stdOrder.value.indexOf(label)
+    return i === -1 ? 999 : i
+  }
+  orderedStdViews.value = [...avail].sort((a, b) => pos(a.label) - pos(b.label))
+}
+async function onStdReorder() {
+  const order = orderedStdViews.value.map((it) => it.label)
+  stdOrder.value = order
+  try {
+    await call('nacifrah.menu.set_menu_order', {
+      order: JSON.stringify(order),
+      scope: 'me',
+      key: STD_VIEWS_ORDER_KEY,
+    })
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить порядок меню'))
+  }
+}
+
+// Заполняем сразу (дефолтный порядок), чтобы не было мигания пустой навигации
+// до загрузки сохранённого порядка в onMounted.
+_rebuildStdViews()
+
 onMounted(async () => {
   try {
     const r = await call('nacifrah.menu.get_menu_order')
@@ -452,6 +521,13 @@ onMounted(async () => {
     menuOrder.value = []
   }
   _rebuildNav()
+  try {
+    const r2 = await call('nacifrah.menu.get_menu_order', { key: STD_VIEWS_ORDER_KEY })
+    stdOrder.value = r2?.order || []
+  } catch (e) {
+    stdOrder.value = []
+  }
+  _rebuildStdViews()
 })
 async function onNavReorder() {
   const order = orderedCustomNav.value.map((it) => it.id)
