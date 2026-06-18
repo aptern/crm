@@ -52,7 +52,13 @@
                   </div>
                 </template>
               </Popover>
-              <div class="text-ink-gray-9">{{ column.column.name }}</div>
+              <!-- B17: название этапа — цветная пилюля по цвету колонки -->
+              <div
+                class="rounded px-2 py-0.5 text-sm font-medium"
+                :class="stagePillClass(column.column.color)"
+              >
+                {{ column.column.name }}
+              </div>
             </div>
             <div class="flex">
               <Dropdown :options="actions(column)">
@@ -224,6 +230,13 @@ const deletedColumns = computed(() => {
       return { label: col.name, value: col.name }
     })
 })
+
+// B17: классы цветной пилюли для названия этапа (светлый фон + тёмный текст того же цвета)
+function stagePillClass(color) {
+  const c = color || 'gray'
+  if (c === 'black') return '!bg-gray-200 !text-ink-gray-9'
+  return `!bg-${c}-100 !text-${c}-700`
+}
 
 function actions(column) {
   return [
