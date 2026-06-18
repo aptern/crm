@@ -13,6 +13,41 @@
         {{ hideFinalStages ? __('Финальные этапы скрыты') : __('Показаны все этапы') }}
       </span>
     </div>
+    <!-- E5(2) (Bitrix24): drag-зона снизу — бросить карточку на финальный этап (Выиграна/Проиграна).
+         Появляется только во время перетаскивания; зоны — обычные drop-таргеты group="fields"
+         с data-column = имя финального этапа, статус ставится тем же путём updateColumn. -->
+    <div
+      v-if="dragging && finalStageColumns.length"
+      class="fixed inset-x-0 bottom-0 z-50 flex justify-center gap-3 border-t border-outline-gray-2 bg-surface-white/95 p-3 shadow-lg"
+    >
+      <Draggable
+        v-for="z in finalStageColumns"
+        :key="z.name"
+        :list="zoneBucket"
+        group="fields"
+        item-key="name"
+        :data-column="z.name"
+        class="flex min-w-52 items-center justify-center rounded-lg border-2 border-dashed py-6 text-base font-semibold"
+        :class="
+          z.kind === 'key_positive'
+            ? 'border-green-400 bg-green-50 text-green-700'
+            : 'border-red-400 bg-red-50 text-red-700'
+        "
+      >
+        <template #header>
+          <div class="pointer-events-none flex items-center gap-1.5">
+            <FeatherIcon
+              :name="z.kind === 'key_positive' ? 'check-circle' : 'x-circle'"
+              class="h-4 w-4"
+            />
+            {{ z.name }}
+          </div>
+        </template>
+        <template #item="{ element }">
+          <span :key="element.name" class="hidden" />
+        </template>
+      </Draggable>
+    </div>
     <div class="flex overflow-x-auto h-full">
     <Draggable
       v-if="columns"
@@ -108,7 +143,8 @@
               class="flex flex-col gap-2 flex-1"
               :delay="isTouchScreenDevice() ? 200 : 0"
               :data-column="column.column.name"
-              @end="updateColumn"
+              @start="onCardDragStart"
+              @end="onCardDragEnd"
             >
               <template #item="{ element: fields }">
                 <component
@@ -271,6 +307,25 @@ function isFinalStage(column) {
 const hasFinalStages = computed(() =>
   (columns.value || []).some((c) => isFinalStage(c)),
 )
+
+// E5(2): drag-зона снизу. Показываем во время перетаскивания карточки; зоны —
+// финальные этапы (Won/Lost). Перенос карточки на зону = смена статуса тем же
+// механизмом updateColumn (зона — drop-таргет group="fields" с data-column).
+const dragging = ref(false)
+const zoneBucket = ref([])
+const finalStageColumns = computed(() =>
+  (columns.value || [])
+    .filter((c) => isFinalStage(c))
+    .map((c) => ({ name: c.column.name, kind: stageKind(c) })),
+)
+function onCardDragStart() {
+  zoneBucket.value = []
+  dragging.value = true
+}
+function onCardDragEnd(d) {
+  dragging.value = false
+  updateColumn(d)
+}
 
 const props = defineProps({
   options: {
