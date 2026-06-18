@@ -30,59 +30,44 @@
         </SidebarLink>
       </div>
       <div class="flex flex-col">
-        <SidebarLink
-          :label="__('Проекты')"
-          :to="{ name: 'Projects' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-[1.5px]"
+        <!-- A1: кастом-пункты меню — перетаскивание за ручку (наведи), порядок сохраняется -->
+        <Draggable
+          :list="orderedCustomNav"
+          item-key="id"
+          handle=".nav-grip"
+          :disabled="isSidebarCollapsed"
+          class="flex flex-col"
+          @end="onNavReorder"
         >
-          <template #icon>
-            <FeatherIcon name="folder" class="h-4 w-4" />
+          <template #item="{ element: it }">
+            <div class="group/nav relative flex items-center">
+              <span
+                v-if="!isSidebarCollapsed"
+                class="nav-grip absolute -left-0.5 z-10 hidden cursor-grab text-ink-gray-4 group-hover/nav:block active:cursor-grabbing"
+                :title="__('Перетащить')"
+              >
+                <FeatherIcon name="menu" class="h-3 w-3" />
+              </span>
+              <SidebarLink
+                :label="__(it.label)"
+                :to="it.to"
+                :isCollapsed="isSidebarCollapsed"
+                class="mx-2 my-[1.5px] w-full"
+              >
+                <template #icon>
+                  <FeatherIcon :name="it.icon" class="h-4 w-4" />
+                </template>
+              </SidebarLink>
+            </div>
           </template>
-        </SidebarLink>
-        <SidebarLink
-          :label="__('База знаний')"
-          :to="{ name: 'KnowledgeBase' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-[1.5px]"
+        </Draggable>
+        <button
+          v-if="isManager() && !isSidebarCollapsed"
+          class="mx-2 mb-0.5 self-start text-left text-[11px] text-ink-gray-4 hover:text-ink-gray-6"
+          @click="applyMenuToAll"
         >
-          <template #icon>
-            <FeatherIcon name="book-open" class="h-4 w-4" />
-          </template>
-        </SidebarLink>
-        <SidebarLink
-          v-if="isManager()"
-          :label="__('Сотрудники')"
-          :to="{ name: 'Employees' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-[1.5px]"
-        >
-          <template #icon>
-            <FeatherIcon name="users" class="h-4 w-4" />
-          </template>
-        </SidebarLink>
-        <SidebarLink
-          v-if="isManager()"
-          :label="__('Отделы')"
-          :to="{ name: 'Departments' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-[1.5px]"
-        >
-          <template #icon>
-            <FeatherIcon name="git-merge" class="h-4 w-4" />
-          </template>
-        </SidebarLink>
-        <SidebarLink
-          v-if="isManager()"
-          :label="__('Права доступа')"
-          :to="{ name: 'Permissions' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-[1.5px]"
-        >
-          <template #icon>
-            <FeatherIcon name="shield" class="h-4 w-4" />
-          </template>
-        </SidebarLink>
+          {{ __('Применить порядок меню для всех') }}
+        </button>
         <!-- E2: воронки — выделенный блок (Лиды + Сделки + кастомные воронки),
              внизу — «Параметры воронок» (редактор). Новые воронки появляются выше. -->
         <div class="mx-2 my-1.5 rounded-lg bg-surface-gray-2 p-1">
@@ -295,7 +280,8 @@ import { sessionStore } from '@/stores/session'
 import { showSettings, activeSettingsPage } from '@/composables/settings'
 import { showChangePasswordModal } from '@/composables/modals'
 import { useBroadcast } from '@/composables/useBroadcast.js'
-import { FeatherIcon, call } from 'frappe-ui'
+import { FeatherIcon, call, toast } from 'frappe-ui'
+import Draggable from 'vuedraggable'
 import {
   SignupBanner,
   TrialBanner,
@@ -439,6 +425,52 @@ function getIcon(routeName, icon) {
 // onboarding
 const { user } = sessionStore()
 const { users, isManager } = usersStore()
+
+// A1: перетаскивание кастом-пунктов меню, порядок сохраняется per-user (+ админ для всех).
+const _allCustomNav = [
+  { id: 'Projects', label: 'Проекты', to: { name: 'Projects' }, icon: 'folder' },
+  { id: 'KnowledgeBase', label: 'База знаний', to: { name: 'KnowledgeBase' }, icon: 'book-open' },
+  { id: 'Employees', label: 'Сотрудники', to: { name: 'Employees' }, icon: 'users', managerOnly: true },
+  { id: 'Departments', label: 'Отделы', to: { name: 'Departments' }, icon: 'git-merge', managerOnly: true },
+  { id: 'Permissions', label: 'Права доступа', to: { name: 'Permissions' }, icon: 'shield', managerOnly: true },
+]
+const menuOrder = ref([])
+const orderedCustomNav = ref([])
+function _rebuildNav() {
+  const avail = _allCustomNav.filter((it) => !it.managerOnly || isManager())
+  const pos = (id) => {
+    const i = menuOrder.value.indexOf(id)
+    return i === -1 ? 999 : i
+  }
+  orderedCustomNav.value = [...avail].sort((a, b) => pos(a.id) - pos(b.id))
+}
+onMounted(async () => {
+  try {
+    const r = await call('nacifrah.menu.get_menu_order')
+    menuOrder.value = r?.order || []
+  } catch (e) {
+    menuOrder.value = []
+  }
+  _rebuildNav()
+})
+async function onNavReorder() {
+  const order = orderedCustomNav.value.map((it) => it.id)
+  menuOrder.value = order
+  try {
+    await call('nacifrah.menu.set_menu_order', { order: JSON.stringify(order), scope: 'me' })
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить порядок меню'))
+  }
+}
+async function applyMenuToAll() {
+  const order = orderedCustomNav.value.map((it) => it.id)
+  try {
+    await call('nacifrah.menu.set_menu_order', { order: JSON.stringify(order), scope: 'all' })
+    toast.success(__('Порядок меню применён для всех'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось применить для всех'))
+  }
+}
 const { isOnboardingStepsCompleted, setUp } = useOnboarding('frappecrm')
 
 async function getFirstLead() {
