@@ -334,7 +334,7 @@ import {
   FeatherIcon,
   usePageMeta,
 } from 'frappe-ui'
-import { computed, ref, onMounted, watch, h, markRaw } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, h, markRaw } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import { isMobileView } from '@/composables/settings'
@@ -356,7 +356,7 @@ const props = defineProps({
 })
 
 const { brand } = getSettings()
-const { $dialog } = globalStore()
+const { $dialog, $socket } = globalStore()
 const { reload: reloadView, getDefaultView, getView } = viewsStore()
 const { isManager } = usersStore()
 
@@ -558,6 +558,17 @@ function reload() {
   list.value.params = getParams()
   list.value.reload()
 }
+
+// A12: real-time — другой пользователь изменил запись этого доктайпа (перетащил
+// карточку, сменил статус/этап и т.п.) → обновляем список/борд без перезагрузки страницы.
+const _realtimeReload = useDebounceFn(() => {
+  if (!isLoading.value) reload()
+}, 700)
+function _onBoardUpdate(data) {
+  if (!data || data.doctype === props.doctype) _realtimeReload()
+}
+onMounted(() => $socket && $socket.on('nacifrah_board_update', _onBoardUpdate))
+onUnmounted(() => $socket && $socket.off('nacifrah_board_update', _onBoardUpdate))
 
 const showExportDialog = ref(false)
 const export_type = ref('Excel')
