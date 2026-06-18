@@ -12,12 +12,22 @@
 
     <div v-for="s in sections" :key="s.kind" class="mb-8 max-w-2xl">
       <h3 class="mb-2 text-base font-semibold text-ink-gray-8">{{ s.title }}</h3>
-      <div v-if="state[s.kind]" class="flex flex-col gap-1.5">
+      <Draggable
+        v-if="state[s.kind]"
+        :list="state[s.kind].stages"
+        item-key="name"
+        handle=".drag-h"
+        class="flex flex-col gap-1.5"
+        @end="() => onReorder(s.kind)"
+      >
+        <template #item="{ element: st }">
         <div
-          v-for="(st, i) in state[s.kind].stages"
-          :key="st.name"
           class="flex items-center gap-2 rounded border border-outline-gray-1 px-2 py-1.5"
         >
+          <!-- E3: перетаскивание этапов мышью за ручку -->
+          <span class="drag-h cursor-grab text-ink-gray-4 active:cursor-grabbing" :title="__('Перетащить')">
+            <FeatherIcon name="menu" class="h-4 w-4" />
+          </span>
           <Popover>
             <template #target="{ togglePopover }">
               <button
@@ -49,23 +59,11 @@
             @blur="(e) => rename(s.kind, st.name, e)"
           />
 
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="chevron-up"
-            :disabled="i === 0 || busy"
-            @click="move(s.kind, st.name, 'up')"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="chevron-down"
-            :disabled="i === state[s.kind].stages.length - 1 || busy"
-            @click="move(s.kind, st.name, 'down')"
-          />
           <Button variant="ghost" size="sm" icon="trash-2" :disabled="busy" @click="del(s.kind, st.name)" />
         </div>
-
+        </template>
+      </Draggable>
+      <div v-if="state[s.kind]" class="max-w-2xl">
         <div class="mt-1 flex items-center gap-2">
           <input
             v-model="newStage[s.kind]"
@@ -84,9 +82,10 @@
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import { Button, Popover, call, toast } from 'frappe-ui'
+import { Button, Popover, FeatherIcon, call, toast } from 'frappe-ui'
 import { reactive, ref, onMounted } from 'vue'
 import { parseColor } from '@/utils'
+import Draggable from 'vuedraggable'
 
 const sections = [
   { kind: 'lead', title: 'Воронка лидов' },
@@ -101,6 +100,21 @@ async function load(kind) {
   state[kind] = r
 }
 onMounted(() => sections.forEach((s) => load(s.kind)))
+
+// E3: после перетаскивания — сохранить новый порядок этапов (массив уже переставлен Draggable)
+async function onReorder(kind) {
+  busy.value = true
+  try {
+    const order = (state[kind]?.stages || []).map((st) => st.name)
+    await call('nacifrah.funnels.set_funnel_order', { kind, order: JSON.stringify(order) })
+    await load(kind)
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить порядок'))
+    await load(kind)
+  } finally {
+    busy.value = false
+  }
+}
 
 async function act(fn, params, kind) {
   busy.value = true
