@@ -90,6 +90,13 @@
             @click="showHistory = true"
           />
           <Button
+            v-if="groupBy === 'stage' && $route.params.viewType === 'kanban' && isManager()"
+            variant="ghost"
+            :label="__('Добавить этап')"
+            iconLeft="plus"
+            @click="openStageDialog"
+          />
+          <Button
             variant="solid"
             :label="__('Create')"
             iconLeft="plus"
@@ -116,6 +123,7 @@
           allowedViews: ['list', 'kanban'],
           defaultColumnField: columnField,
           defaultKanbanFields: kanbanFields,
+          kanbanColumns: projectKanbanColumns,
         }"
       />
   <KanbanView
@@ -340,6 +348,66 @@
       />
     </div>
   </div>
+
+  <!-- B19: диалог «Добавить этап» (этот проект / все проекты) -->
+  <Dialog v-model="stageDialog" :options="{ title: __('Добавить этап') }">
+    <template #body-content>
+      <div class="flex flex-col gap-3">
+        <FormControl
+          :label="__('Название этапа')"
+          v-model="stageForm.label"
+          :placeholder="__('Например, Согласование макета')"
+        />
+        <div>
+          <div class="mb-1 text-sm text-ink-gray-7">{{ __('Цвет') }}</div>
+          <Popover>
+            <template #target="{ togglePopover }">
+              <button
+                class="flex items-center gap-2 rounded border border-outline-gray-2 px-2 py-1.5 text-sm"
+                @click="togglePopover"
+              >
+                <span class="h-3.5 w-3.5 rounded-full" :class="`bg-${stageForm.color}-500`" />
+                {{ stageForm.color }}
+              </button>
+            </template>
+            <template #body="{ togglePopover }">
+              <div class="grid grid-cols-6 gap-1 rounded-lg bg-surface-modal p-2 shadow-xl ring-1 ring-black ring-opacity-5">
+                <button
+                  v-for="c in STAGE_PALETTE"
+                  :key="c"
+                  class="flex h-6 w-6 items-center justify-center rounded hover:bg-surface-gray-2"
+                  @click="(stageForm.color = c, togglePopover())"
+                >
+                  <span class="h-3.5 w-3.5 rounded-full" :class="`bg-${c}-500`" />
+                </button>
+              </div>
+            </template>
+          </Popover>
+        </div>
+        <div>
+          <div class="mb-1 text-sm text-ink-gray-7">{{ __('Куда добавить') }}</div>
+          <div class="flex flex-col gap-1.5">
+            <label v-if="singleProject" class="flex items-center gap-2 text-sm">
+              <input type="radio" value="project" v-model="stageForm.scope" />
+              {{ __('Только в этот проект') }}
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" value="all" v-model="stageForm.scope" />
+              {{ __('Во все проекты') }}
+            </label>
+          </div>
+          <p v-if="!singleProject" class="mt-1 text-xs text-ink-gray-4">
+            {{ __('Выберите один проект слева, чтобы добавить этап только в него.') }}
+          </p>
+        </div>
+        <ErrorMessage v-if="stageErr" :message="stageErr" />
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="stageDialog = false" />
+        <Button variant="solid" :label="__('Добавить')" :loading="stageSaving" @click="saveStage" />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -366,16 +434,20 @@ import {
   TextEditor,
   Dropdown,
   FeatherIcon,
+  Dialog,
+  FormControl,
+  ErrorMessage,
+  Popover,
   call,
   createResource,
   toast,
 } from 'frappe-ui'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Task')
-const { getUser, crmUsers } = usersStore()
+const { getUser, crmUsers, isManager } = usersStore()
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 const { capture } = useTelemetry()
 
@@ -436,9 +508,80 @@ const groupBy = ref('stage')
 const columnField = computed(() =>
   groupBy.value === 'deadline' ? 'nacifrah_deadline_bucket' : 'nacifrah_stage',
 )
+const boardNonce = ref(0)
 const selectionKey = computed(
-  () => (selected.value.slice().sort().join('|') || 'none') + ':' + groupBy.value,
+  () =>
+    (selected.value.slice().sort().join('|') || 'none') +
+    ':' +
+    groupBy.value +
+    ':' +
+    boardNonce.value,
 )
+
+// B19: пер-проектные этапы (колонки). Карта всех колонок (глобальные + пер-проектные)
+// грузится один раз; для одиночного проекта показываем глобальные + его кастомные,
+// чужие пер-проектные скрыты. Передаём явный kanban_columns в ViewControls (опционально).
+const allStageColumns = ref([])
+async function loadStageColumns() {
+  try {
+    allStageColumns.value = (await call('nacifrah.project_columns.get_stage_columns')) || []
+  } catch (e) {
+    allStageColumns.value = []
+  }
+}
+onMounted(loadStageColumns)
+const projectKanbanColumns = computed(() => {
+  if (groupBy.value !== 'stage') return ''
+  const cols = allStageColumns.value
+  if (!cols.length) return ''
+  const single = selected.value.length === 1 ? selected.value[0] : null
+  const filtered = cols.filter((c) => !c.owner || (single ? c.owner === single : true))
+  return JSON.stringify(
+    filtered.map((c) => (c.color ? { name: c.name, color: c.color } : { name: c.name })),
+  )
+})
+
+// Диалог «Добавить этап» (со scope: этот проект / все)
+const STAGE_PALETTE = [
+  'gray', 'blue', 'green', 'orange', 'red', 'purple',
+  'pink', 'teal', 'cyan', 'yellow', 'violet', 'amber',
+]
+const stageDialog = ref(false)
+const stageForm = ref({ label: '', color: 'blue', scope: 'project' })
+const stageErr = ref('')
+const stageSaving = ref(false)
+const singleProject = computed(() => (selected.value.length === 1 ? selected.value[0] : null))
+function openStageDialog() {
+  stageErr.value = ''
+  stageForm.value = { label: '', color: 'blue', scope: singleProject.value ? 'project' : 'all' }
+  stageDialog.value = true
+}
+async function saveStage() {
+  stageErr.value = ''
+  const label = (stageForm.value.label || '').trim()
+  if (!label) {
+    stageErr.value = __('Введите название этапа')
+    return
+  }
+  const scope = stageForm.value.scope === 'project' && singleProject.value ? 'project' : 'all'
+  stageSaving.value = true
+  try {
+    await call('nacifrah.project_columns.add_project_stage', {
+      project: singleProject.value || '',
+      label,
+      color: stageForm.value.color,
+      scope,
+    })
+    stageDialog.value = false
+    await loadStageColumns()
+    boardNonce.value++ // форс-ремаунт ViewControls → новые kanban_columns
+    toast.success(__('Этап добавлен'))
+  } catch (e) {
+    stageErr.value = e?.messages?.[0] || __('Не удалось добавить этап')
+  } finally {
+    stageSaving.value = false
+  }
+}
 
 // Карточка на борде: показываем приоритет, исполнителя и дедлайн-чип
 const kanbanFields = JSON.stringify(['priority', 'assigned_to', 'due_date'])

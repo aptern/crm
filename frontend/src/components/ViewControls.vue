@@ -475,7 +475,15 @@ function getParams() {
     !!props.options?.defaultColumnField &&
     props.options.defaultColumnField !== _view?.column_field
   const title_field = _view?.title_field || ''
-  const kanban_columns = usingDefaultField ? '' : _view?.kanban_columns || ''
+  // B19: ProjectTasks может ЯВНО задать kanban_columns (пер-проектные этапы);
+  // опционально, остальные борды не передают — поведение не меняется.
+  const overrideCols = props.options?.kanbanColumns
+  const kanban_columns =
+    overrideCols != null && overrideCols !== ''
+      ? overrideCols
+      : usingDefaultField
+        ? ''
+        : _view?.kanban_columns || ''
   const kanban_fields =
     _view?.kanban_fields || props.options?.defaultKanbanFields || ''
 
