@@ -56,15 +56,18 @@
           <template #item="{ element: d }">
             <!-- I10/I3: клик по карточке → выезд карточки справа (как Лиды/Сделки) -->
             <div
-              class="cursor-pointer rounded-lg border bg-surface-white p-2 text-sm transition hover:border-outline-gray-3 hover:shadow-sm"
+              class="cursor-pointer rounded-lg border bg-surface-white p-2.5 text-sm transition hover:border-outline-gray-3 hover:shadow-sm"
               :data-name="d.name"
               @click="openCard(d)"
             >
-              <div class="truncate font-medium text-ink-gray-8">
-                {{ d.title }}
+              <div class="flex items-center gap-2">
+                <Avatar size="sm" :label="d.title" />
+                <div class="truncate font-medium text-ink-gray-8">
+                  {{ d.title }}
+                </div>
               </div>
-              <div class="mt-1 flex items-center justify-between">
-                <span class="text-xs text-ink-gray-5">{{
+              <div class="mt-2 flex items-center justify-between">
+                <span class="font-medium text-ink-gray-7">{{
                   formatRub(d.amount)
                 }}</span>
                 <div @click.stop>
@@ -72,6 +75,15 @@
                     <Button variant="ghost" size="sm" icon="more-horizontal" />
                   </Dropdown>
                 </div>
+              </div>
+              <div
+                v-if="d.mobile_no"
+                class="mt-1 text-xs text-ink-gray-5"
+              >
+                {{ formatPhoneDisplay(d.mobile_no) }}
+              </div>
+              <div v-if="d.creation" class="mt-1 text-xs text-ink-gray-4">
+                {{ fmtDate(d.creation) }}
               </div>
             </div>
           </template>
@@ -120,6 +132,7 @@
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import {
+  Avatar,
   Button,
   Dialog,
   Dropdown,
@@ -132,7 +145,19 @@ import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Draggable from 'vuedraggable'
 import { recordSlideOverStore } from '@/stores/recordSlideOver'
-import { formatRub } from '@/utils/ruFormat'
+import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
+
+// I3: дата создания на карточке (как на нативных бордах Сделок)
+function fmtDate(s) {
+  if (!s) return ''
+  const d = new Date(String(s).replace(' ', 'T'))
+  if (isNaN(d.getTime())) return ''
+  return (
+    d.toLocaleDateString('ru-RU') +
+    ' ' +
+    d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  )
+}
 
 const route = useRoute()
 const funnel = ref(route.params.name)
