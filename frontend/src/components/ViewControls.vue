@@ -167,6 +167,14 @@
           :doctype="doctype"
           @update="updateGroupBy"
         />
+        <!-- I5/I6: строка поиска (имя/телефон) -->
+        <FormControl
+          type="text"
+          :placeholder="__('Поиск: имя или телефон…')"
+          v-model="searchTerm"
+          @input="onSearchInput"
+          class="w-48"
+        />
         <Filter
           v-model="list"
           :doctype="doctype"
@@ -1340,6 +1348,39 @@ function applyLikeFilter() {
   }
   updateFilter(filters)
 }
+
+// I5/I6: строка поиска по борду. Телефон (в основном цифры) → LIKE по mobile_no
+// (телефоны хранятся цифрами); иначе → LIKE по организации (сделки) / имени (лиды).
+const searchTerm = ref('')
+let _lastSearchKey = null
+function applySearch() {
+  const term = (searchTerm.value || '').trim()
+  let filters = { ...(list.value?.params?.filters || {}) }
+  if (_lastSearchKey) {
+    delete filters[_lastSearchKey]
+    _lastSearchKey = null
+  }
+  if (term) {
+    const digits = term.replace(/\D/g, '')
+    const compact = term.replace(/[\s()+\-]/g, '')
+    const isPhone = digits.length >= 4 && compact.length === digits.length
+    if (isPhone) {
+      filters['mobile_no'] = ['like', `%${digits}%`]
+      _lastSearchKey = 'mobile_no'
+    } else {
+      const f =
+        props.doctype === 'CRM Deal'
+          ? 'organization'
+          : props.doctype === 'CRM Lead'
+            ? 'lead_name'
+            : 'name'
+      filters[f] = ['like', `%${term}%`]
+      _lastSearchKey = f
+    }
+  }
+  updateFilter(filters)
+}
+const onSearchInput = useDebounceFn(applySearch, 400)
 
 function likeDoc({ name, liked }) {
   createResource({

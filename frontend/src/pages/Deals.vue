@@ -253,7 +253,7 @@ import { organizationsStore } from '@/stores/organizations'
 import { statusesStore } from '@/stores/statuses'
 import { callEnabled } from '@/composables/telephony'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
-import { formatRub } from '@/utils/ruFormat'
+import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import { Tooltip, Avatar, Dropdown } from 'frappe-ui'
 import { useRoute } from 'vue-router'
@@ -465,6 +465,9 @@ function parseRows(rows, columns = []) {
           label: formatDate(deal[row], '', true, true),
           timeAgo: __(timeAgo(deal[row])),
         }
+      } else if (row === 'mobile_no') {
+        // I6: телефон отображается маской +7 (XXX) XXX-XX-XX
+        _rows[row] = { label: deal.mobile_no ? formatPhoneDisplay(deal.mobile_no) : '' }
       } else if (
         ['first_response_time', 'first_responded_on', 'response_by'].includes(
           row,
