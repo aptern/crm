@@ -4,6 +4,60 @@
       {{ __('Активность работы') }}
     </div>
 
+    <!-- B16: наблюдатели задачи — получают уведомления о новых сообщениях -->
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+      <span class="text-xs text-ink-gray-5">{{ __('Наблюдатели:') }}</span>
+      <button
+        v-for="w in watchers.data || []"
+        :key="w.name"
+        class="group/w relative rounded-full hover:opacity-80"
+        :title="w.full_name + ' — ' + __('убрать из наблюдателей')"
+        @click="removeWatcher(w.name)"
+      >
+        <Avatar :image="w.image" :label="w.full_name" size="sm" />
+        <span
+          class="absolute -right-0.5 -top-0.5 hidden h-3 w-3 place-items-center rounded-full bg-surface-gray-7 text-[8px] text-ink-white group-hover/w:grid"
+        >
+          ×
+        </span>
+      </button>
+      <span v-if="!(watchers.data || []).length" class="text-xs text-ink-gray-4">
+        {{ __('нет') }}
+      </span>
+      <Popover>
+        <template #target="{ togglePopover }">
+          <Button
+            variant="subtle"
+            size="sm"
+            icon="plus"
+            :tooltip="__('Добавить наблюдателя')"
+            @click="togglePopover"
+          />
+        </template>
+        <template #body="{ togglePopover }">
+          <div
+            class="max-h-60 w-56 overflow-y-auto rounded-lg bg-surface-modal p-1 shadow-xl ring-1 ring-black ring-opacity-5"
+          >
+            <button
+              v-for="u in addableUsers"
+              :key="u.value"
+              class="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-surface-gray-2"
+              @click="(addWatcher(u.value), togglePopover())"
+            >
+              <Avatar :image="u.image" :label="u.label" size="xs" />
+              <span class="truncate">{{ u.label }}</span>
+            </button>
+            <div
+              v-if="!addableUsers.length"
+              class="px-2 py-1 text-xs text-ink-gray-4"
+            >
+              {{ __('Все уже добавлены') }}
+            </div>
+          </div>
+        </template>
+      </Popover>
+    </div>
+
     <div
       v-if="activity.data && activity.data.length"
       class="flex flex-col gap-3 pr-1"
@@ -74,7 +128,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Avatar, Button, TextEditor, createResource, call, toast } from 'frappe-ui'
+import {
+  Avatar,
+  Button,
+  Popover,
+  TextEditor,
+  createResource,
+  call,
+  toast,
+} from 'frappe-ui'
 import { timeAgo } from '@/utils'
 import { usersStore } from '@/stores/users'
 
@@ -88,14 +150,48 @@ const newComment = ref('')
 const sending = ref(false)
 const commentEditor = ref(null)
 
-// B16: список участников для @упоминания (как в комментариях сделок/лидов)
+// B16: список участников для @упоминания + добавления в наблюдатели
 const users = computed(
   () =>
     usersList.data?.crmUsers
       ?.filter((u) => u.enabled)
-      .map((u) => ({ label: u.full_name?.trimEnd() || u.name, value: u.name })) ||
-    [],
+      .map((u) => ({
+        label: u.full_name?.trimEnd() || u.name,
+        value: u.name,
+        image: u.user_image,
+      })) || [],
 )
+
+// B16: наблюдатели задачи
+const watchers = createResource({
+  url: 'nacifrah.tasks_api.get_task_watchers',
+  params: { task: props.task },
+  auto: true,
+})
+const addableUsers = computed(() => {
+  const have = new Set((watchers.data || []).map((w) => w.name))
+  return users.value.filter((u) => !have.has(u.value))
+})
+async function addWatcher(user) {
+  try {
+    watchers.data = await call('nacifrah.tasks_api.add_task_watcher', {
+      task: props.task,
+      user,
+    })
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось добавить наблюдателя'))
+  }
+}
+async function removeWatcher(user) {
+  try {
+    watchers.data = await call('nacifrah.tasks_api.remove_task_watcher', {
+      task: props.task,
+      user,
+    })
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось убрать наблюдателя'))
+  }
+}
 
 // контент TextEditor — HTML; пустой <p></p> за текст не считаем
 const hasContent = computed(() => {
@@ -128,6 +224,7 @@ async function send() {
     newComment.value = ''
     commentEditor.value?.editor?.commands?.clearContent(true)
     activity.reload()
+    watchers.reload()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось отправить комментарий'))
   } finally {
