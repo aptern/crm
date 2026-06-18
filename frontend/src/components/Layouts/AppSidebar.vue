@@ -83,17 +83,47 @@
             <FeatherIcon name="shield" class="h-4 w-4" />
           </template>
         </SidebarLink>
-        <SidebarLink
-          v-if="isManager()"
-          :label="__('Воронки')"
-          :to="{ name: 'Funnels' }"
-          :isCollapsed="isSidebarCollapsed"
-          class="mx-2 my-[1.5px]"
-        >
-          <template #icon>
-            <FeatherIcon name="filter" class="h-4 w-4" />
-          </template>
-        </SidebarLink>
+        <!-- E2: воронки — выделенный блок (Лиды + Сделки + кастомные воронки),
+             внизу — «Параметры воронок» (редактор). Новые воронки появляются выше. -->
+        <div class="mx-2 my-1.5 rounded-lg bg-surface-gray-2 p-1">
+          <div
+            v-if="!isSidebarCollapsed"
+            class="px-2 pb-0.5 pt-1 text-xs font-semibold uppercase text-ink-gray-5"
+          >
+            {{ __('Воронки') }}
+          </div>
+          <SidebarLink
+            :label="__('Лиды')"
+            :to="{ name: 'Leads' }"
+            :isCollapsed="isSidebarCollapsed"
+            class="my-[1.5px]"
+          >
+            <template #icon>
+              <LeadsIcon class="h-4 w-4" />
+            </template>
+          </SidebarLink>
+          <SidebarLink
+            :label="__('Сделки')"
+            :to="{ name: 'Deals' }"
+            :isCollapsed="isSidebarCollapsed"
+            class="my-[1.5px]"
+          >
+            <template #icon>
+              <DealsIcon class="h-4 w-4" />
+            </template>
+          </SidebarLink>
+          <SidebarLink
+            v-if="isManager()"
+            :label="__('Параметры воронок')"
+            :to="{ name: 'Funnels' }"
+            :isCollapsed="isSidebarCollapsed"
+            class="my-[1.5px] text-ink-gray-6"
+          >
+            <template #icon>
+              <FeatherIcon name="sliders" class="h-4 w-4" />
+            </template>
+          </SidebarLink>
+        </div>
       </div>
       <div v-for="view in allViews" :key="view.label">
         <div class="mx-2 my-1.5" />
@@ -344,6 +374,8 @@ const allViews = computed(() => {
       hideLabel: true,
       opened: true,
       views: links.filter((link) => {
+        // E2: Лиды/Сделки вынесены в выделенный блок «Воронки» выше
+        if (link.label === 'Leads' || link.label === 'Deals') return false
         if (link.condition) {
           return link.condition()
         }
