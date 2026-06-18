@@ -21,7 +21,7 @@
         <div
           v-for="p in projects.data"
           :key="p.name"
-          class="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-surface-gray-3"
+          class="group/proj flex items-center gap-2 rounded px-2 py-1.5 hover:bg-surface-gray-3"
           :class="selected.includes(p.name) ? 'bg-surface-gray-3' : ''"
         >
           <input
@@ -32,10 +32,18 @@
           />
           <button
             class="flex-1 truncate text-left text-sm text-ink-gray-8"
-            :title="p.organization || p.name"
+            :title="projDisplay(p)"
             @click="selectOne(p.name)"
           >
-            {{ p.organization || p.name }}
+            {{ projDisplay(p) }}
+          </button>
+          <button
+            v-if="isManager()"
+            class="hidden shrink-0 text-ink-gray-4 hover:text-ink-gray-7 group-hover/proj:block"
+            :title="__('Переименовать проект')"
+            @click.stop="openRename(p)"
+          >
+            <FeatherIcon name="edit-2" class="h-3.5 w-3.5" />
           </button>
         </div>
         <div
@@ -408,6 +416,27 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- I16: переименование проекта -->
+  <Dialog v-model="renameDialog" :options="{ title: __('Переименовать проект') }">
+    <template #body-content>
+      <div class="flex flex-col gap-2">
+        <FormControl
+          :label="__('Название проекта')"
+          v-model="renameVal"
+          :placeholder="renameTarget?.organization || __('Например, ООО Ромашка')"
+          @keydown.enter="saveRename"
+        />
+        <p class="text-xs text-ink-gray-4">
+          {{ __('Пусто → показывается организация сделки.') }}
+        </p>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="renameDialog = false" />
+        <Button variant="solid" :label="__('Сохранить')" :loading="renameSaving" @click="saveRename" />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -460,7 +489,7 @@ const projects = createResource({
   params: {
     doctype: 'CRM Deal',
     filters: { nacifrah_is_project: 1 },
-    fields: ['name', 'organization'],
+    fields: ['name', 'organization', 'nacifrah_project_name'],
     order_by: 'modified desc',
     limit_page_length: 0,
   },
@@ -627,15 +656,16 @@ async function updateDue(task, val) {
   }
 }
 
-// Приоритеты (B2): 4 уровня. Значения по-английски (Low/Medium/High/Urgent),
-// русские подписи + цвета — на отображении. Дефолт — «Нормально» (Medium).
+// Приоритет (I18, переделка B2): 4 уровня. Значения по-английски (Low/Medium/High/Urgent
+// — совместимость с Frappe/SLA), русские подписи — на отображении. Срочность теперь
+// отражает ДЕДЛАЙН (левая полоса), а это — именно ПРИОРИТЕТ важности.
 const PRIORITY_LABELS = {
-  Urgent: 'Крайне срочно',
-  High: 'Срочно',
-  Medium: 'Нормально',
-  Low: 'Не срочно',
+  Urgent: 'Критичный',
+  High: 'Высокий',
+  Medium: 'Средний',
+  Low: 'Низкий',
 }
-// Цвета: крайне срочно — красный, срочно — бледно-красный, нормально — зелёный, не срочно — серый.
+// Цвета чипа приоритета: критичный — красный, высокий — бледно-красный, средний — зелёный, низкий — серый.
 const PRIORITY_CHIP = {
   Urgent: { backgroundColor: '#fee2e2', color: '#b91c1c' },
   High: { backgroundColor: '#fef2f2', color: '#ef4444' },
@@ -644,7 +674,7 @@ const PRIORITY_CHIP = {
 }
 const PRIORITY_ORDER = ['Urgent', 'High', 'Medium', 'Low']
 function priorityLabel(p) {
-  return PRIORITY_LABELS[p] || p || __('Не срочно')
+  return PRIORITY_LABELS[p] || p || __('Низкий')
 }
 function priorityChipStyle(p) {
   return PRIORITY_CHIP[p] || PRIORITY_CHIP.Low
@@ -691,14 +721,46 @@ async function updateAssignee(task, email) {
     toast.error(e?.messages?.[0] || __('Не удалось назначить исполнителя'))
   }
 }
+// I16: имя проекта = заданное имя → организация → имя сделки (последнее лишь fallback).
+function projDisplay(p) {
+  return (p && (p.nacifrah_project_name || p.organization || p.name)) || __('Проект')
+}
 const boardTitle = computed(() => {
   if (allSelected.value) return __('Все проекты')
   if (selected.value.length === 1) {
     const p = projects.data?.find((x) => x.name === selected.value[0])
-    return (p && (p.organization || p.name)) || __('Проект')
+    return projDisplay(p)
   }
   return __('Выбрано проектов: {0}', [selected.value.length])
 })
+
+// I16: переименование проекта (карандаш) — хранится в nacifrah_project_name на сделке.
+const renameDialog = ref(false)
+const renameTarget = ref(null)
+const renameVal = ref('')
+const renameSaving = ref(false)
+function openRename(p) {
+  renameTarget.value = p
+  renameVal.value = p.nacifrah_project_name || ''
+  renameDialog.value = true
+}
+async function saveRename() {
+  if (!renameTarget.value) return
+  renameSaving.value = true
+  try {
+    await call('nacifrah.api.rename_project', {
+      deal: renameTarget.value.name,
+      name: renameVal.value || '',
+    })
+    renameDialog.value = false
+    await projects.reload()
+    toast.success(__('Проект переименован'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось переименовать'))
+  } finally {
+    renameSaving.value = false
+  }
+}
 
 const tasksListView = ref(null)
 
@@ -867,17 +929,39 @@ async function toggleChecklistItem(name, it) {
   }
 }
 
-// Цвет левой полосы карточки по приоритету (B2): крайне срочно=красный,
-// срочно=бледно-красный, нормально=зелёный, не срочно=серый.
-const PRIORITY_COLORS = {
-  Urgent: '#dc2626',
-  High: '#f87171',
-  Medium: '#16a34a',
-  Low: '#94a3b8',
+// I19: левая полоса карточки — по ДЕДЛАЙНУ (просрочено=красный, сегодня=жёлтый,
+// завтра/эта неделя=зелёный, дальше/нет срока=серый).
+function getDeadlineColor(s) {
+  const GRAY = '#94a3b8'
+  if (!s) return GRAY
+  const d = new Date(String(s).replace(' ', 'T'))
+  if (isNaN(d)) return GRAY
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dd = new Date(d)
+  dd.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((dd - today) / 86400000)
+  if (diffDays < 0) return '#dc2626' // просрочено — красный
+  if (diffDays === 0) return '#f59e0b' // сегодня — жёлтый
+  // конец текущей недели (воскресенье)
+  const endWeek = new Date(today)
+  endWeek.setDate(today.getDate() + ((7 - today.getDay()) % 7))
+  if (diffDays === 1 || dd <= endWeek) return '#16a34a' // завтра / эта неделя — зелёный
+  return GRAY // дальше — серый
+}
+// I19: лёгкий ФОН карточки — по ПРИОРИТЕТУ, только Критичный/Высокий (остальные белые).
+const PRIORITY_BG = {
+  Urgent: '#fef2f2', // лёгкий красный
+  High: '#fff7ed', // лёгкий оранжевый
 }
 function cardStyleFor(fields) {
-  const c = PRIORITY_COLORS[fields?.priority]
-  return c ? { borderLeftWidth: '4px', borderLeftColor: c } : {}
+  const style = {
+    borderLeftWidth: '4px',
+    borderLeftColor: getDeadlineColor(fields?.due_date),
+  }
+  const bg = PRIORITY_BG[fields?.priority]
+  if (bg) style.backgroundColor = bg
+  return style
 }
 
 async function onKanbanUpdate(data) {
