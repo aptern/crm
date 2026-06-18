@@ -11,6 +11,15 @@
   </LayoutHeader>
 
   <div class="flex-1 overflow-auto p-3">
+    <!-- I4/I5: поиск по организации/телефону внутри воронки (как на нативных бордах) -->
+    <div class="mb-3 max-w-xs">
+      <FormControl
+        type="text"
+        v-model="search"
+        :placeholder="__('Поиск: организация или телефон')"
+        @input="onSearchInput"
+      />
+    </div>
     <div v-if="loading" class="p-8 text-center text-sm text-ink-gray-5">
       {{ __('Загрузка…') }}
     </div>
@@ -143,6 +152,7 @@ import {
 } from 'frappe-ui'
 import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useDebounceFn } from '@vueuse/core'
 import Draggable from 'vuedraggable'
 import { recordSlideOverStore } from '@/stores/recordSlideOver'
 import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
@@ -163,6 +173,9 @@ const route = useRoute()
 const funnel = ref(route.params.name)
 const board = ref({ columns: [] })
 const loading = ref(true)
+// I4/I5: поиск внутри воронки
+const search = ref('')
+const onSearchInput = useDebounceFn(() => load(), 400)
 
 const { openRecord } = recordSlideOverStore()
 
@@ -175,7 +188,10 @@ const creating = ref(false)
 async function load() {
   loading.value = true
   try {
-    board.value = await call('nacifrah.api.get_board', { funnel: funnel.value })
+    board.value = await call('nacifrah.api.get_board', {
+      funnel: funnel.value,
+      search: search.value || undefined,
+    })
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить воронку'))
   } finally {
@@ -188,6 +204,7 @@ watch(
   (n) => {
     if (n) {
       funnel.value = n
+      search.value = ''
       load()
     }
   },
