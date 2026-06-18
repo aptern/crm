@@ -63,6 +63,17 @@
         </SidebarLink>
         <SidebarLink
           v-if="isManager()"
+          :label="__('Отделы')"
+          :to="{ name: 'Departments' }"
+          :isCollapsed="isSidebarCollapsed"
+          class="mx-2 my-[1.5px]"
+        >
+          <template #icon>
+            <FeatherIcon name="git-merge" class="h-4 w-4" />
+          </template>
+        </SidebarLink>
+        <SidebarLink
+          v-if="isManager()"
           :label="__('Права доступа')"
           :to="{ name: 'Permissions' }"
           :isCollapsed="isSidebarCollapsed"

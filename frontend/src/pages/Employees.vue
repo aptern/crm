@@ -5,7 +5,7 @@
     </template>
     <template #right-header>
       <Button
-        v-if="isManager()"
+        v-if="canManage"
         variant="solid"
         :label="__('Нанять')"
         iconLeft="plus"
@@ -97,7 +97,7 @@
               </dl>
             </div>
             <div
-              v-if="isManager() && card.status === 'Active' && card.user_id"
+              v-if="canManage && card.status === 'Active' && card.user_id"
               class="shrink-0 border-t border-outline-gray-1 px-6 py-4"
             >
               <Button
@@ -217,6 +217,9 @@ import { usersStore } from '@/stores/users'
 
 const { isManager } = usersStore()
 
+// D2: право найма/увольнения по политике (а не просто роль менеджера)
+const canManage = ref(false)
+
 // ── список + D6 фильтры ──────────────────────────────────────────────
 const employeeList = ref([])
 const filterStatus = ref('Active')
@@ -233,7 +236,14 @@ async function loadEmployees() {
   }
 }
 watch([filterStatus, filterDept], loadEmployees)
-onMounted(loadEmployees)
+onMounted(async () => {
+  loadEmployees()
+  try {
+    canManage.value = !!(await call('nacifrah.hr.can_manage_staff'))
+  } catch (e) {
+    canManage.value = false
+  }
+})
 
 const statusFilterOptions = [
   { label: 'Активные', value: 'Active' },
