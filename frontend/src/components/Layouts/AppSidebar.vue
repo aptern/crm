@@ -168,6 +168,16 @@
         </template>
       </SidebarLink>
       <SidebarLink
+        v-if="isManager()"
+        :label="__('Настройки')"
+        :isCollapsed="isSidebarCollapsed"
+        @click="showSettings = true"
+      >
+        <template #icon>
+          <FeatherIcon name="settings" class="h-4 w-4" />
+        </template>
+      </SidebarLink>
+      <SidebarLink
         v-if="isOnboardingStepsCompleted"
         :label="__('Help')"
         :isCollapsed="isSidebarCollapsed"
