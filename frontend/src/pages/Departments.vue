@@ -4,13 +4,32 @@
       <div class="text-lg font-semibold text-ink-gray-8">{{ __('Отделы') }}</div>
     </template>
     <template #right-header>
-      <Button
-        v-if="isManager()"
-        variant="solid"
-        :label="__('Создать отдел')"
-        iconLeft="plus"
-        @click="openCreate"
-      />
+      <div class="flex items-center gap-2">
+        <!-- D4: переключатель Дерево / Граф -->
+        <div class="flex rounded bg-surface-gray-2 p-0.5">
+          <button
+            class="rounded px-2 py-1 text-xs font-medium"
+            :class="viewMode === 'tree' ? 'bg-surface-white text-ink-gray-8 shadow-sm' : 'text-ink-gray-5'"
+            @click="viewMode = 'tree'"
+          >
+            {{ __('Дерево') }}
+          </button>
+          <button
+            class="rounded px-2 py-1 text-xs font-medium"
+            :class="viewMode === 'graph' ? 'bg-surface-white text-ink-gray-8 shadow-sm' : 'text-ink-gray-5'"
+            @click="viewMode = 'graph'"
+          >
+            {{ __('Граф') }}
+          </button>
+        </div>
+        <Button
+          v-if="isManager()"
+          variant="solid"
+          :label="__('Создать отдел')"
+          iconLeft="plus"
+          @click="openCreate"
+        />
+      </div>
     </template>
   </LayoutHeader>
 
@@ -19,7 +38,53 @@
       {{ __('Иерархия отделов сверху вниз. Руководитель наследуется на нижние уровни, если у отдела он не задан явно.') }}
     </p>
 
-    <div v-if="flatTree.length" class="flex flex-col gap-1">
+    <!-- ГРАФ (D4): org-chart сверху вниз, связи родитель→ребёнок -->
+    <div v-if="viewMode === 'graph'">
+      <div v-if="graph.nodes.length" class="overflow-auto rounded border border-outline-gray-1 bg-surface-gray-1 p-4">
+        <svg
+          :width="graph.width"
+          :height="graph.height"
+          :viewBox="`0 0 ${graph.width} ${graph.height}`"
+          class="block"
+        >
+          <path
+            v-for="(e, i) in graph.edges"
+            :key="'e' + i"
+            :d="edgePath(e[0], e[1])"
+            fill="none"
+            class="stroke-outline-gray-2"
+            stroke-width="1.5"
+          />
+          <foreignObject
+            v-for="n in graph.nodes"
+            :key="n.name"
+            :x="n._x"
+            :y="n._y"
+            :width="NODE_W"
+            :height="NODE_H"
+          >
+            <div
+              class="flex h-full flex-col justify-center rounded-lg border border-outline-gray-2 bg-surface-white px-2.5 py-1 shadow-sm"
+            >
+              <div class="truncate text-sm font-medium text-ink-gray-8">
+                {{ n.department_name }}
+              </div>
+              <div class="truncate text-xs text-ink-gray-5">
+                {{ n.members }} {{ __('чел.') }}
+                <span v-if="n.effective_head_name" :class="n.inherited ? 'text-ink-gray-4' : ''">
+                  · {{ n.effective_head_name }}{{ n.inherited ? ' (' + __('насл.') + ')' : '' }}
+                </span>
+              </div>
+            </div>
+          </foreignObject>
+        </svg>
+      </div>
+      <div v-else class="p-8 text-center text-sm text-ink-gray-5">
+        {{ __('Пока нет отделов. Создайте первый.') }}
+      </div>
+    </div>
+
+    <div v-if="viewMode === 'tree' && flatTree.length" class="flex flex-col gap-1">
       <div
         v-for="d in flatTree"
         :key="d.name"
@@ -75,7 +140,10 @@
         </div>
       </div>
     </div>
-    <div v-else class="p-8 text-center text-sm text-ink-gray-5">
+    <div
+      v-else-if="viewMode === 'tree' && !flatTree.length"
+      class="p-8 text-center text-sm text-ink-gray-5"
+    >
       {{ __('Пока нет отделов. Создайте первый.') }}
     </div>
   </div>
@@ -176,6 +244,60 @@ const flatTree = computed(() => {
   walk('__root__', 0)
   return out
 })
+
+// D4: граф отделов (org-chart). Раскладка сверху вниз без внешних библиотек:
+// x листьев — по порядку, x родителя — по центру детей; y — по глубине.
+const viewMode = ref('tree')
+const NODE_W = 180
+const NODE_H = 52
+const H_GAP = 24
+const V_GAP = 44
+const graph = computed(() => {
+  const all = (departments.value || []).filter((d) => !isErpRoot(d))
+  const names = new Set(all.map((d) => d.name))
+  const childrenOf = {}
+  for (const d of all) {
+    const key = names.has(d.parent) ? d.parent : '__root__'
+    ;(childrenOf[key] = childrenOf[key] || []).push(d)
+  }
+  const build = (d, depth) => ({
+    ...d,
+    depth,
+    children: (childrenOf[d.name] || []).map((c) => build(c, depth + 1)),
+  })
+  const roots = (childrenOf['__root__'] || []).map((d) => build(d, 0))
+
+  const nodes = []
+  const edges = []
+  let leaf = 0
+  const assign = (node) => {
+    if (!node.children.length) {
+      node._x = leaf * (NODE_W + H_GAP)
+      leaf++
+    } else {
+      node.children.forEach(assign)
+      const f = node.children[0]._x
+      const l = node.children[node.children.length - 1]._x
+      node._x = (f + l) / 2
+    }
+    node._y = node.depth * (NODE_H + V_GAP)
+    nodes.push(node)
+    for (const c of node.children) edges.push([node, c])
+  }
+  roots.forEach(assign)
+
+  const width = nodes.length ? Math.max(...nodes.map((n) => n._x)) + NODE_W : 0
+  const height = nodes.length ? Math.max(...nodes.map((n) => n._y)) + NODE_H : 0
+  return { nodes, edges, width, height }
+})
+function edgePath(p, c) {
+  const x1 = p._x + NODE_W / 2
+  const y1 = p._y + NODE_H
+  const x2 = c._x + NODE_W / 2
+  const y2 = c._y
+  const my = (y1 + y2) / 2
+  return `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`
+}
 
 const parentOptions = computed(() => [
   { label: __('— верхний уровень —'), value: '' },
