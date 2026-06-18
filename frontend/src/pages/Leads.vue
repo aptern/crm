@@ -33,6 +33,8 @@
     v-model="leads"
     :options="{
       doctype: 'CRM Lead',
+      amountField: 'annual_revenue',
+      boardFilters: {},
       getRoute: (row) => ({
         name: 'Lead',
         params: { leadId: row.name },

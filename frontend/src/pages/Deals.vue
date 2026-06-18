@@ -34,6 +34,8 @@
     v-model="deals"
     :options="{
       doctype: 'CRM Deal',
+      amountField: 'annual_revenue',
+      boardFilters: { nacifrah_is_project: 0 },
       getRoute: (row) => ({
         name: 'Deal',
         params: { dealId: row.name },

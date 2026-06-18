@@ -139,6 +139,13 @@
               />
             </div>
           </div>
+          <!-- I25 (как Bitrix): сумма всех сделок этапа -->
+          <div
+            v-if="amountField && stageSums[column.column.name] !== undefined"
+            class="rounded bg-surface-gray-3 px-2 py-1 text-center text-sm font-semibold text-ink-gray-7"
+          >
+            {{ formatRub(stageSums[column.column.name] || 0) }}
+          </div>
           <div class="overflow-y-auto flex flex-col gap-2 h-full">
             <Draggable
               :list="column.data"
@@ -284,8 +291,9 @@ import { isTouchScreenDevice, colors, parseColor } from '@/utils'
 import { statusesStore } from '@/stores/statuses'
 import Draggable from 'vuedraggable'
 import { Dropdown, Popover, Dialog, FormControl, call, toast } from 'frappe-ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useStorage } from '@vueuse/core'
+import { formatRub } from '@/utils/ruFormat'
 
 const { getDealStatus, getLeadStatus } = statusesStore()
 
@@ -421,6 +429,35 @@ const columns = computed(() => {
   }
   return _columns
 })
+
+// I25 (как Bitrix): сумма всех сделок этапа — плашка над колонкой. Грузим только если
+// родитель передал options.amountField (Лиды/Сделки); сумма из бэкенда (не зависит от
+// пагинации карточек), с теми же фильтрами борда.
+const stageSums = ref({})
+const amountField = computed(() => props.options?.amountField)
+async function loadStageSums() {
+  const cf = kanban.value?.data?.column_field
+  if (!amountField.value || !props.options?.doctype || !cf) {
+    stageSums.value = {}
+    return
+  }
+  try {
+    stageSums.value =
+      (await call('nacifrah.api.get_kanban_stage_sums', {
+        doctype: props.options.doctype,
+        column_field: cf,
+        amount_field: amountField.value,
+        filters: JSON.stringify(props.options?.boardFilters || {}),
+      })) || {}
+  } catch (e) {
+    stageSums.value = {}
+  }
+}
+watch(
+  () => (columns.value || []).map((c) => c.column?.name).join('|'),
+  loadStageSums,
+  { immediate: true },
+)
 
 const deletedColumns = computed(() => {
   const _columns = kanban.value?.data?.kanban_columns || []
