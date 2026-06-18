@@ -55,6 +55,11 @@ const routes = [
     component: () => import('@/pages/Funnels.vue'),
   },
   {
+    path: '/funnel/:name',
+    name: 'CustomFunnel',
+    component: () => import('@/pages/CustomFunnel.vue'),
+  },
+  {
     alias: '/leads',
     path: '/leads/view/:viewType?',
     name: 'Leads',

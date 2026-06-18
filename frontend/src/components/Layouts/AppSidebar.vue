@@ -84,7 +84,12 @@
                         class="my-[1.5px] w-full"
                       >
                         <template #icon>
-                          <component :is="fn.icon" class="h-4 w-4" />
+                          <FeatherIcon
+                            v-if="typeof fn.icon === 'string'"
+                            :name="fn.icon"
+                            class="h-4 w-4"
+                          />
+                          <component :is="fn.icon" v-else class="h-4 w-4" />
                         </template>
                       </SidebarLink>
                     </div>
@@ -486,18 +491,34 @@ const _allCustomNav = [
 ]
 // A1.3: порядок воронок внутри блока (Лиды/Сделки + будущие кастомные); «Параметры» закреплены внизу
 const FUNNELS_ORDER_KEY = 'nacifrah_funnels_order'
-const _allFunnels = [
+const _nativeFunnels = [
   { id: 'Leads', label: 'Лиды', to: { name: 'Leads' }, icon: LeadsIcon },
   { id: 'Deals', label: 'Сделки', to: { name: 'Deals' }, icon: DealsIcon },
 ]
+// E1: пользовательские воронки подгружаются и встают в этот же перетаскиваемый список
+const customFunnelItems = ref([])
 const funnelsOrder = ref([])
 const orderedFunnels = ref([])
 function _rebuildFunnels() {
+  const all = [..._nativeFunnels, ...customFunnelItems.value]
   const pos = (id) => {
     const i = funnelsOrder.value.indexOf(id)
     return i === -1 ? 999 : i
   }
-  orderedFunnels.value = [..._allFunnels].sort((a, b) => pos(a.id) - pos(b.id))
+  orderedFunnels.value = all.sort((a, b) => pos(a.id) - pos(b.id))
+}
+async function _loadCustomFunnels() {
+  try {
+    const list = (await call('nacifrah.api.list_funnels_admin')) || []
+    customFunnelItems.value = list.map((f) => ({
+      id: 'F::' + f.name,
+      label: f.funnel_name,
+      to: { name: 'CustomFunnel', params: { name: f.name } },
+      icon: f.icon || 'filter',
+    }))
+  } catch (e) {
+    customFunnelItems.value = []
+  }
 }
 _rebuildFunnels()
 async function onFunnelsReorder() {
@@ -581,6 +602,7 @@ onMounted(async () => {
   } catch (e) {
     funnelsOrder.value = []
   }
+  await _loadCustomFunnels()
   _rebuildFunnels()
 })
 async function onNavReorder() {

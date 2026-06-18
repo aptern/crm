@@ -103,13 +103,119 @@
       </div>
       <div v-else class="text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
     </div>
+
+    <!-- E1: пользовательские (дополнительные) воронки -->
+    <div class="mb-8 max-w-2xl">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="text-base font-semibold text-ink-gray-8">{{ __('Дополнительные воронки') }}</h3>
+        <Button
+          variant="solid"
+          size="sm"
+          :label="__('Создать воронку')"
+          iconLeft="plus"
+          @click="openFunnelEditor()"
+        />
+      </div>
+      <p class="mb-2 text-xs text-ink-gray-5">
+        {{ __('Свои воронки-пайплайны со своими этапами и цветами. Открываются из бокового меню «Воронки».') }}
+      </p>
+      <div v-if="customFunnels.length" class="flex flex-col gap-1.5">
+        <div
+          v-for="f in customFunnels"
+          :key="f.name"
+          class="flex items-center gap-2 rounded border border-outline-gray-1 px-2 py-1.5"
+        >
+          <FeatherIcon :name="f.icon || 'filter'" class="h-4 w-4 text-ink-gray-5" />
+          <span class="flex-1 text-sm font-medium text-ink-gray-8">{{ f.funnel_name }}</span>
+          <span class="text-xs text-ink-gray-5">{{ f.stages.length }} {{ __('этап.') }}</span>
+          <Button variant="ghost" size="sm" icon="edit-2" @click="openFunnelEditor(f)" />
+          <Button variant="ghost" size="sm" icon="trash-2" @click="deleteFunnel(f)" />
+        </div>
+      </div>
+      <div v-else class="text-sm text-ink-gray-5">{{ __('Пока нет дополнительных воронок.') }}</div>
+    </div>
   </div>
+
+  <!-- E1: редактор воронки (создание/правка) -->
+  <Dialog
+    v-model="funnelDialog"
+    :options="{ title: editingFunnel ? __('Редактировать воронку') : __('Создать воронку'), size: 'xl' }"
+  >
+    <template #body-content>
+      <div class="flex flex-col gap-3">
+        <div class="flex gap-2">
+          <FormControl class="flex-1" :label="__('Название')" v-model="fForm.name" :placeholder="__('Например, Партнёры')" />
+          <FormControl class="w-40" :label="__('Иконка')" v-model="fForm.icon" :placeholder="'filter'" />
+        </div>
+        <div>
+          <div class="mb-1 text-sm font-medium text-ink-gray-7">{{ __('Этапы') }}</div>
+          <Draggable :list="fForm.stages" item-key="_id" handle=".st-drag" class="flex flex-col gap-1.5">
+            <template #item="{ element: st, index }">
+              <div class="flex items-center gap-2 rounded border border-outline-gray-1 px-2 py-1.5">
+                <span class="st-drag cursor-grab text-ink-gray-4 active:cursor-grabbing" :title="__('Перетащить')">
+                  <FeatherIcon name="menu" class="h-4 w-4" />
+                </span>
+                <Popover>
+                  <template #target="{ togglePopover }">
+                    <button class="flex h-5 w-5 items-center justify-center rounded hover:bg-surface-gray-2" :title="__('Цвет')" @click="togglePopover">
+                      <IndicatorIcon :class="parseColor(st.color)" />
+                    </button>
+                  </template>
+                  <template #body="{ togglePopover }">
+                    <div class="grid grid-cols-6 gap-1 rounded-lg bg-surface-modal p-2 shadow-xl ring-1 ring-black ring-opacity-5">
+                      <button
+                        v-for="c in PALETTE"
+                        :key="c"
+                        class="flex h-6 w-6 items-center justify-center rounded hover:bg-surface-gray-2"
+                        @click="(st.color = c, togglePopover())"
+                      >
+                        <IndicatorIcon :class="parseColor(c)" />
+                      </button>
+                    </div>
+                  </template>
+                </Popover>
+                <select
+                  v-model="st.kind"
+                  class="shrink-0 rounded border border-outline-gray-2 bg-surface-white px-1.5 py-1 text-xs text-ink-gray-7 focus:outline-none"
+                >
+                  <option value="normal">{{ __('В работе') }}</option>
+                  <option value="won">{{ __('Успех') }}</option>
+                  <option value="lost">{{ __('Проигрыш') }}</option>
+                </select>
+                <input
+                  v-model="st.stage_name"
+                  class="flex-1 rounded border-0 bg-transparent px-1 text-sm text-ink-gray-8 focus:outline-none focus:ring-1 focus:ring-outline-gray-3"
+                  :placeholder="__('Название этапа')"
+                />
+                <Button variant="ghost" size="sm" icon="trash-2" @click="fForm.stages.splice(index, 1)" />
+              </div>
+            </template>
+          </Draggable>
+          <Button variant="subtle" size="sm" :label="__('Добавить этап')" iconLeft="plus" class="mt-1.5" @click="addEditorStage" />
+        </div>
+        <ErrorMessage v-if="fError" :message="fError" />
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="funnelDialog = false" />
+        <Button variant="solid" :label="__('Сохранить')" :loading="fSaving" @click="saveFunnel" />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import { Button, Popover, FeatherIcon, call, toast } from 'frappe-ui'
+import {
+  Button,
+  Popover,
+  FeatherIcon,
+  Dialog,
+  FormControl,
+  ErrorMessage,
+  call,
+  toast,
+} from 'frappe-ui'
 import { reactive, ref, onMounted } from 'vue'
 import { parseColor } from '@/utils'
 import Draggable from 'vuedraggable'
@@ -195,5 +301,105 @@ function move(kind, name, direction) {
 }
 function del(kind, name) {
   act('nacifrah.funnels.delete_funnel_stage', { kind, stage_name: name }, kind)
+}
+
+// E1: пользовательские воронки (Sales Funnel) — список + редактор
+const PALETTE = [
+  'gray', 'blue', 'green', 'orange', 'red', 'purple',
+  'pink', 'teal', 'cyan', 'yellow', 'violet', 'amber',
+]
+const customFunnels = ref([])
+async function loadCustom() {
+  try {
+    customFunnels.value = (await call('nacifrah.api.list_funnels_admin')) || []
+  } catch (e) {
+    customFunnels.value = []
+  }
+}
+onMounted(loadCustom)
+
+const funnelDialog = ref(false)
+const editingFunnel = ref(null)
+const fForm = reactive({ name: '', icon: 'filter', stages: [] })
+const fError = ref('')
+const fSaving = ref(false)
+let _stid = 0
+function _editorStage(s = {}) {
+  return {
+    _id: ++_stid,
+    stage_name: s.stage_name || '',
+    color: s.color || 'gray',
+    kind: s.is_won ? 'won' : s.is_lost ? 'lost' : 'normal',
+  }
+}
+function addEditorStage() {
+  fForm.stages.push(_editorStage())
+}
+function openFunnelEditor(f = null) {
+  fError.value = ''
+  editingFunnel.value = f
+  fForm.name = f?.funnel_name || ''
+  fForm.icon = f?.icon || 'filter'
+  fForm.stages = f
+    ? f.stages.map(_editorStage)
+    : [_editorStage({ stage_name: 'Заявка', color: 'blue' })]
+  funnelDialog.value = true
+}
+function _stagesPayload() {
+  return fForm.stages
+    .filter((s) => (s.stage_name || '').trim())
+    .map((s, i) => ({
+      stage_name: s.stage_name.trim(),
+      sequence: i + 1,
+      color: s.color || 'gray',
+      is_won: s.kind === 'won' ? 1 : 0,
+      is_lost: s.kind === 'lost' ? 1 : 0,
+    }))
+}
+async function saveFunnel() {
+  fError.value = ''
+  if (!fForm.name.trim()) {
+    fError.value = __('Введите название воронки')
+    return
+  }
+  const stages = _stagesPayload()
+  if (!stages.length) {
+    fError.value = __('Добавьте хотя бы один этап')
+    return
+  }
+  fSaving.value = true
+  try {
+    if (editingFunnel.value) {
+      await call('nacifrah.api.update_funnel', {
+        funnel: editingFunnel.value.name,
+        funnel_name: fForm.name.trim(),
+        icon: fForm.icon || 'filter',
+        stages: JSON.stringify(stages),
+      })
+    } else {
+      await call('nacifrah.api.create_funnel', {
+        funnel_name: fForm.name.trim(),
+        icon: fForm.icon || 'filter',
+        stages: JSON.stringify(stages),
+      })
+    }
+    funnelDialog.value = false
+    await loadCustom()
+    toast.success(__('Сохранено'))
+  } catch (e) {
+    fError.value = e?.messages?.[0] || __('Не удалось сохранить воронку')
+  } finally {
+    fSaving.value = false
+  }
+}
+async function deleteFunnel(f) {
+  if (!window.confirm(__('Удалить воронку «{0}»? Сделки будут отвязаны.', [f.funnel_name]))) return
+  try {
+    await call('nacifrah.api.delete_funnel', { funnel: f.name })
+    await loadCustom()
+    toast.success(__('Воронка удалена'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось удалить воронку'))
+  }
 }
 </script>
