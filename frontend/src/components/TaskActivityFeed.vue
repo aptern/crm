@@ -100,9 +100,11 @@
     </div>
 
     <div class="mt-3 flex flex-col gap-2">
-      <!-- B16: чат задачи — расширенный ввод с @упоминанием участников -->
+      <!-- B16: чат задачи — расширенный ввод с @упоминанием участников.
+           I24: Enter — отправить, Shift+Enter — перенос строки (capture до редактора). -->
       <div
         class="rounded-md border border-outline-gray-2 bg-surface-gray-1 px-2 py-1.5"
+        @keydown.enter.capture="onEnterKey"
       >
         <TextEditor
           ref="commentEditor"
@@ -210,6 +212,14 @@ const activity = createResource({
 
 function userImage(owner) {
   return getUser(owner)?.user_image
+}
+
+// I24: Enter → отправить; Shift+Enter → перенос строки (дефолт редактора).
+function onEnterKey(e) {
+  if (e.shiftKey) return // Shift+Enter — обычный перенос строки
+  e.preventDefault()
+  e.stopPropagation()
+  if (hasContent.value && !sending.value) send()
 }
 
 async function send() {

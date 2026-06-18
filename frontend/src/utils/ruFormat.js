@@ -23,9 +23,10 @@ export function formatPhoneDisplay(s) {
 // --- Сумма (I9) -----------------------------------------------------------
 export const RUBLE_SIGN = '₽'
 
-// Разряды через пробел, БЕЗ копеек, знак рубля в конце: 1234567 → "1 234 567 ₽".
+// Разряды через пробел, БЕЗ копеек, знак рубля ВПЛОТНУЮ: 1234567 → "1 234 567₽"
+// (по маске заказчика «110 000₽» — без пробела перед ₽).
 export function formatRub(value, sign = RUBLE_SIGN) {
   const n = Math.round(flt(value, 0) || 0)
   const grouped = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-  return (n < 0 ? '-' : '') + grouped + (sign ? ' ' + sign : '')
+  return (n < 0 ? '-' : '') + grouped + (sign || '')
 }
