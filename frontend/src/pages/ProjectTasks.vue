@@ -5,7 +5,18 @@
       <div
         class="flex h-12 shrink-0 items-center justify-between border-b border-outline-gray-1 px-3"
       >
-        <span class="text-base font-semibold text-ink-gray-8">{{ __('Проекты') }}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-base font-semibold text-ink-gray-8">{{ __('Проекты') }}</span>
+          <!-- M6(а): создать проект вручную -->
+          <button
+            v-if="isManager()"
+            class="text-ink-gray-4 hover:text-ink-gray-7"
+            :title="__('Создать проект')"
+            @click="openCreateProject"
+          >
+            <FeatherIcon name="plus" class="h-4 w-4" />
+          </button>
+        </div>
         <span class="text-xs text-ink-gray-5"
           >{{ selected.length }}/{{ projects.data?.length || 0 }}</span
         >
@@ -44,6 +55,15 @@
             @click.stop="openRename(p)"
           >
             <FeatherIcon name="edit-2" class="h-3.5 w-3.5" />
+          </button>
+          <!-- M6(а): удалить проект -->
+          <button
+            v-if="isManager()"
+            class="hidden shrink-0 text-ink-gray-4 hover:text-red-600 group-hover/proj:block"
+            :title="__('Удалить проект')"
+            @click.stop="deleteProject(p)"
+          >
+            <FeatherIcon name="trash-2" class="h-3.5 w-3.5" />
           </button>
         </div>
         <div
@@ -456,6 +476,24 @@
       <div class="mt-4 flex justify-end gap-2">
         <Button :label="__('Отмена')" @click="renameDialog = false" />
         <Button variant="solid" :label="__('Сохранить')" :loading="renameSaving" @click="saveRename" />
+      </div>
+    </template>
+  </Dialog>
+
+  <!-- M6(а): создание проекта вручную -->
+  <Dialog v-model="createDialog" :options="{ title: __('Создать проект') }">
+    <template #body-content>
+      <div class="flex flex-col gap-2">
+        <FormControl
+          :label="__('Название проекта')"
+          v-model="createVal"
+          :placeholder="__('Например, ООО Ромашка')"
+          @keydown.enter="saveCreateProject"
+        />
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="createDialog = false" />
+        <Button variant="solid" :label="__('Создать')" :loading="createSaving" @click="saveCreateProject" />
       </div>
     </template>
   </Dialog>
@@ -874,6 +912,47 @@ async function saveRename() {
     toast.error(e?.messages?.[0] || __('Не удалось переименовать'))
   } finally {
     renameSaving.value = false
+  }
+}
+
+// M6(а): ручное создание проекта (не только авто из выигранной сделки)
+const createDialog = ref(false)
+const createVal = ref('')
+const createSaving = ref(false)
+function openCreateProject() {
+  createVal.value = ''
+  createDialog.value = true
+}
+async function saveCreateProject() {
+  const name = (createVal.value || '').trim()
+  if (!name) return
+  createSaving.value = true
+  try {
+    await call('nacifrah.api.create_project', { name })
+    createDialog.value = false
+    await projects.reload()
+    toast.success(__('Проект создан'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось создать проект'))
+  } finally {
+    createSaving.value = false
+  }
+}
+// M6(а): удаление проекта вместе с задачами
+async function deleteProject(p) {
+  if (
+    !window.confirm(
+      __('Удалить проект «{0}» вместе со всеми его задачами?').replace('{0}', projDisplay(p)),
+    )
+  )
+    return
+  try {
+    await call('nacifrah.api.delete_project', { project: p.name })
+    if (selected.value.includes(p.name)) selectAll()
+    await projects.reload()
+    toast.success(__('Проект удалён'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось удалить проект'))
   }
 }
 
