@@ -45,7 +45,19 @@
         <div class="text-sm text-ink-gray-6">
           {{ __('Этап') }}: <span class="font-medium">{{ createStage }}</span>
         </div>
+        <!-- L1: воронка текущих клиентов (Допродажа) — выбор существующего клиента -->
+        <div v-if="existingClients" class="flex flex-col gap-1.5">
+          <span class="text-xs text-ink-gray-5">{{ __('Клиент') }}</span>
+          <Link
+            class="form-control"
+            :value="createOrg"
+            doctype="CRM Organization"
+            :placeholder="__('Выберите клиента из списка')"
+            @change="(v) => (createOrg = v)"
+          />
+        </div>
         <FormControl
+          v-else
           v-model="createTitle"
           type="text"
           :label="__('Название сделки')"
@@ -69,6 +81,7 @@
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import SalesBoard from '@/components/SalesBoard.vue'
+import Link from '@/components/Controls/Link.vue'
 import { Button, Dialog, FeatherIcon, FormControl, call, toast } from 'frappe-ui'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -78,6 +91,8 @@ const funnel = ref(route.params.name)
 const funnelName = ref('')
 const funnelIcon = ref('')
 const funnelStages = ref([])
+// L1: воронка «текущих клиентов» (Допродажа) → организация выбирается из списка
+const existingClients = ref(false)
 
 const board = ref(null)
 const viewControls = ref(null)
@@ -102,6 +117,7 @@ async function loadFunnelMeta() {
     funnelName.value = m?.funnel_name || funnel.value
     funnelIcon.value = m?.icon || 'filter'
     funnelStages.value = m?.stages || []
+    existingClients.value = !!m?.existing_clients
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить воронку'))
   }
@@ -137,24 +153,30 @@ async function onMove(data) {
 const showCreate = ref(false)
 const createStage = ref('')
 const createTitle = ref('')
+const createOrg = ref('')
 const creating = ref(false)
 function onNewClick(column) {
   createStage.value = column?.column?.name || ''
   createTitle.value = ''
+  createOrg.value = ''
   showCreate.value = true
 }
 async function submitCreate() {
-  const title = (createTitle.value || '').trim()
-  if (!title) return
+  const payload = { funnel: funnel.value, stage: createStage.value }
+  if (existingClients.value) {
+    if (!createOrg.value) return
+    payload.organization = createOrg.value
+  } else {
+    const title = (createTitle.value || '').trim()
+    if (!title) return
+    payload.title = title
+  }
   creating.value = true
   try {
-    await call('nacifrah.api.create_deal', {
-      funnel: funnel.value,
-      stage: createStage.value,
-      title,
-    })
+    await call('nacifrah.api.create_deal', payload)
     showCreate.value = false
     createTitle.value = ''
+    createOrg.value = ''
     deals.value?.reload?.()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось создать сделку'))

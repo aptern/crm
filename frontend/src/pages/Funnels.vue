@@ -71,8 +71,9 @@
             {{ item.title }}
           </button>
           <span class="text-xs text-ink-gray-5">{{ item.stages.length }} {{ __('этап.') }}</span>
+          <!-- L1: защищённые воронки (Допродажа) удалять нельзя -->
           <Button
-            v-if="item.type === 'custom'"
+            v-if="item.type === 'custom' && !item.protected"
             variant="ghost"
             size="sm"
             icon="trash-2"
@@ -244,7 +245,7 @@ async function loadAll() {
   try {
     const cf = (await call('nacifrah.api.list_funnels_admin')) || []
     for (const f of cf) {
-      items.push({ key: 'c:' + f.name, type: 'custom', name: f.name, title: f.funnel_name, icon: f.icon || 'filter', stages: _mapCustom(f.stages), expanded: false })
+      items.push({ key: 'c:' + f.name, type: 'custom', name: f.name, title: f.funnel_name, icon: f.icon || 'filter', protected: f.protected, existing_clients: f.existing_clients, stages: _mapCustom(f.stages), expanded: false })
     }
   } catch (e) {}
   // сохраняем развёрнутость по ключу
