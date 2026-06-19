@@ -5,12 +5,29 @@
   выбрать файл → подвигать/зум в квадратной рамке → «Применить» → отдаём JPEG-квадрат.
 -->
 <template>
-  <Dialog
-    v-model="show"
-    :options="{ title: title || __('Фото сотрудника'), size: 'sm' }"
-  >
-    <template #body-content>
-      <div class="flex flex-col items-center gap-3">
+  <!-- K1: собственный высокий z-[60] поверх слайд-панели сотрудника (z-40),
+       чтобы попап обрезки не уходил ЗА модалку и был кликабелен. -->
+  <Teleport to="body">
+    <div
+      v-if="show"
+      class="fixed inset-0 z-[60] flex items-center justify-center p-4"
+    >
+      <div class="absolute inset-0 bg-black/40" @click="show = false" />
+      <div
+        class="relative z-[61] w-full max-w-sm rounded-xl bg-surface-modal p-4 shadow-2xl"
+      >
+        <div class="mb-3 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-ink-gray-9">
+            {{ title || __('Фото сотрудника') }}
+          </h3>
+          <button
+            class="text-ink-gray-5 hover:text-ink-gray-8"
+            @click="show = false"
+          >
+            <FeatherIcon name="x" class="h-4 w-4" />
+          </button>
+        </div>
+        <div class="flex flex-col items-center gap-3">
         <!-- выбор файла -->
         <label
           class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-outline-gray-2 px-3 py-2 text-sm text-ink-gray-6 hover:bg-surface-gray-2"
@@ -78,12 +95,13 @@
           @click="apply"
         />
       </div>
-    </template>
-  </Dialog>
+        </div>
+      </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { Dialog, Button, FeatherIcon } from 'frappe-ui'
+import { Button, FeatherIcon } from 'frappe-ui'
 import { ref, watch, nextTick } from 'vue'
 
 const props = defineProps({
