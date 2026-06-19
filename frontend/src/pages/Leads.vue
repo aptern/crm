@@ -26,6 +26,7 @@
     :filters="{ converted: 0 }"
     :options="{
       allowedViews: ['list', 'group_by', 'kanban'],
+      defaultKanbanFields: leadKanbanFields,
     }"
   />
   <KanbanView
@@ -126,7 +127,7 @@
     </template>
     <template #fields="{ fieldName, itemName }">
       <div
-        v-if="getRow(itemName, fieldName).label"
+        v-if="getRow(itemName, fieldName).label && fieldName !== 'creation'"
         class="truncate flex items-center gap-2"
       >
         <div v-if="fieldName === 'status'">
@@ -203,26 +204,10 @@
     </template>
     <template #actions="{ itemName }">
       <div class="flex gap-2 items-center justify-between">
-        <div class="text-ink-gray-5 flex items-center gap-1.5">
-          <EmailAtIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_email_count').label">
-            {{ getRow(itemName, '_email_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <NoteIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_note_count').label">
-            {{ getRow(itemName, '_note_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <TaskIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_task_count').label">
-            {{ getRow(itemName, '_task_count').label }}
-          </span>
-          <span class="text-3xl leading-[0]"> &middot; </span>
-          <CommentIcon class="h-4 w-4" />
-          <span v-if="getRow(itemName, '_comment_count').label">
-            {{ getRow(itemName, '_comment_count').label }}
-          </span>
+        <!-- I33: единый вид со Сделками — дата и время создания вместо 4 иконок -->
+        <div class="flex items-center gap-1 text-xs text-ink-gray-4">
+          <FeatherIcon name="clock" class="h-3.5 w-3.5" />
+          <span>{{ getRow(itemName, 'creation').label }}</span>
         </div>
         <Dropdown
           class="flex items-center gap-2"
@@ -294,11 +279,13 @@ import { getMeta } from '@/stores/meta'
 import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
+import { organizationsStore } from '@/stores/organizations'
+import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
 import { callEnabled } from '@/composables/telephony'
 import { useBroadcast } from '@/composables/useBroadcast'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
-import { Avatar, Tooltip, Dropdown } from 'frappe-ui'
+import { Avatar, Tooltip, Dropdown, FeatherIcon } from 'frappe-ui'
 import { useRoute } from 'vue-router'
 import { ref, computed, reactive, h } from 'vue'
 
@@ -307,6 +294,15 @@ const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
 const { makeCall } = globalStore()
 const { getUser } = usersStore()
 const { getLeadStatus } = statusesStore()
+const { getOrganization } = organizationsStore()
+
+// I33: карточка лида унифицирована с карточкой сделки (поля по умолчанию)
+const leadKanbanFields = JSON.stringify([
+  'annual_revenue',
+  'mobile_no',
+  '_assign',
+  'creation',
+])
 const { on } = useBroadcast()
 const { updateOnboardingStep } = useOnboarding('frappecrm')
 const { capture } = useTelemetry()
@@ -438,7 +434,10 @@ function parseRows(rows, columns = []) {
       }
 
       if (fieldType && fieldType == 'Currency') {
-        _rows[row] = getFormattedCurrency(row, lead)
+        _rows[row] =
+          row === 'annual_revenue'
+            ? formatRub(lead[row])
+            : getFormattedCurrency(row, lead)
       }
 
       if (fieldType && fieldType == 'Float') {
@@ -456,7 +455,14 @@ function parseRows(rows, columns = []) {
           image_label: lead.first_name,
         }
       } else if (row == 'organization') {
-        _rows[row] = lead.organization
+        _rows[row] = {
+          label: lead.organization,
+          logo: getOrganization(lead.organization)?.organization_logo,
+        }
+      } else if (row === 'mobile_no') {
+        _rows[row] = {
+          label: lead.mobile_no ? formatPhoneDisplay(lead.mobile_no) : '',
+        }
       } else if (row === 'website') {
         _rows[row] = website(lead.website)
       } else if (row == 'status') {
@@ -499,7 +505,7 @@ function parseRows(rows, columns = []) {
         }))
       } else if (['modified', 'creation'].includes(row)) {
         _rows[row] = {
-          label: formatDate(lead[row]),
+          label: formatDate(lead[row], '', true, true),
           timeAgo: __(timeAgo(lead[row])),
         }
       } else if (
