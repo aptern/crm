@@ -9,6 +9,38 @@ export function normalizePhoneToDigits(s) {
   return String(s == null ? '' : s).replace(/\D/g, '')
 }
 
+// I31: извлечь ровно 10 значащих цифр (без кода страны 7/8) — ТЗ заказчика.
+export function extractPhoneDigits(value) {
+  const digits = String(value == null ? '' : value).replace(/\D/g, '')
+  if (digits.length > 0 && (digits[0] === '7' || digits[0] === '8')) {
+    return digits.slice(1, 11) // следующие 10 цифр после кода страны
+  }
+  return digits.slice(0, 10)
+}
+
+// I31: прогрессивная маска ввода "+7 (XXX) XXX-XX-XX" (формируется по мере набора).
+export function formatPhoneInput(value) {
+  const digits = extractPhoneDigits(value)
+  if (digits.length === 0) return ''
+  const parts = [
+    digits.slice(0, 3),
+    digits.slice(3, 6),
+    digits.slice(6, 8),
+    digits.slice(8, 10),
+  ]
+  let formatted = '+7'
+  if (parts[0]) formatted += ` (${parts[0]}${parts[0].length === 3 ? ')' : ''}`
+  if (parts[1]) formatted += ` ${parts[1]}`
+  if (parts[2]) formatted += `-${parts[2]}`
+  if (parts[3]) formatted += `-${parts[3]}`
+  return formatted
+}
+
+// I31: валиден ровно при 10 значащих цифрах.
+export function isPhoneValid(value) {
+  return extractPhoneDigits(value).length === 10
+}
+
 // Отображение РФ-номера маской +7 (XXX) XXX-XX-XX. Не-РФ номера — как есть.
 export function formatPhoneDisplay(s) {
   let d = normalizePhoneToDigits(s)

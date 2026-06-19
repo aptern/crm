@@ -298,6 +298,16 @@
       :disabled="Boolean(field.read_only)"
       @change="(v) => fieldChange(v, field)"
     />
+    <PhoneInput
+      v-else-if="
+        field.options === 'Phone' ||
+        ['mobile_no', 'phone'].includes(field.fieldname)
+      "
+      :value="data[field.fieldname]"
+      :placeholder="getPlaceholder(field)"
+      :disabled="Boolean(field.read_only)"
+      @change="(v) => fieldChange(v, field)"
+    />
     <FormControl
       v-else
       type="text"
@@ -312,6 +322,7 @@
 <script setup>
 import Password from '@/components/Controls/Password.vue'
 import FormattedInput from '@/components/Controls/FormattedInput.vue'
+import PhoneInput from '@/components/Controls/PhoneInput.vue'
 import DurationInput from '@/components/Controls/DurationInput.vue'
 import RatingInput from '@/components/Controls/RatingInput.vue'
 import AttachControl from '@/components/Controls/AttachControl.vue'
