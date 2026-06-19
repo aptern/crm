@@ -305,6 +305,10 @@ function stageKind(column) {
   const dt = props.options?.doctype
   const name = column?.column?.name
   if (!name) return 'normal'
+  // I34: для кастомных воронок финальность приходит флагами прямо на колонке
+  // (get_funnel_meta → is_won/is_lost). Лиды/Сделки этих флагов на колонке не несут.
+  if (column?.column?.is_won) return 'key_positive'
+  if (column?.column?.is_lost) return 'key_negative'
   let type
   try {
     if (dt === 'CRM Deal') type = getDealStatus(name)?.type

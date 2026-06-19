@@ -13,34 +13,27 @@
     </template>
   </LayoutHeader>
 
-  <div class="flex items-center gap-2 px-3 pt-3">
-    <!-- I4/I5: поиск по организации/телефону внутри воронки -->
-    <div class="max-w-xs flex-1">
-      <FormControl
-        type="text"
-        v-model="search"
-        :placeholder="__('Поиск: организация или телефон')"
-        @input="onSearchInput"
-      />
-    </div>
-  </div>
-
-  <div
-    v-if="!board || board.loading"
-    class="p-8 text-center text-sm text-ink-gray-5"
-  >
-    {{ __('Загрузка…') }}
-  </div>
-  <div
-    v-else-if="!board.data?.data?.length"
-    class="p-8 text-center text-sm text-ink-gray-5"
-  >
-    {{ __('В этой воронке нет этапов. Добавьте их в «Параметры воронок».') }}
-  </div>
-  <!-- I33: единый нативный борд (как Лиды/Сделки), сгруппированный по этапу воронки -->
+  <!-- I34: тот же тулбар, что у Лидов/Сделок (фильтры, «Мои», «в работе», настройка
+       канбана, поиск). column_field=nacifrah_funnel_stage + явные колонки из воронки. -->
+  <ViewControls
+    ref="viewControls"
+    v-model="deals"
+    v-model:loadMore="loadMore"
+    v-model:resizeColumn="triggerResize"
+    v-model:updatedPageCount="updatedPageCount"
+    doctype="CRM Deal"
+    :filters="{ nacifrah_funnel: funnel }"
+    :options="{
+      allowedViews: ['kanban'],
+      defaultColumnField: 'nacifrah_funnel_stage',
+      defaultKanbanFields: kanbanFields,
+      kanbanColumns: funnelKanbanColumns,
+      noViewPersist: true,
+    }"
+  />
   <KanbanView
-    v-else
-    v-model="board"
+    v-if="route.params.viewType == 'kanban'"
+    v-model="deals"
     :options="{
       doctype: 'CRM Deal',
       amountField: 'annual_revenue',
@@ -53,6 +46,7 @@
       onNewClick: (column) => onNewClick(column),
     }"
     @update="onKanbanUpdate"
+    @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
   >
     <template #title="{ titleField, itemName }">
       <div class="flex gap-2 items-center">
@@ -170,6 +164,7 @@
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import KanbanView from '@/components/Kanban/KanbanView.vue'
+import ViewControls from '@/components/ViewControls.vue'
 import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import {
   Avatar,
@@ -179,16 +174,14 @@ import {
   FormControl,
   Tooltip,
   call,
-  createResource,
   toast,
 } from 'frappe-ui'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useDebounceFn } from '@vueuse/core'
 import { usersStore } from '@/stores/users'
 import { statusesStore } from '@/stores/statuses'
 import { organizationsStore } from '@/stores/organizations'
-import { formatDate, timeAgo, website, formatTime } from '@/utils'
+import { formatDate, timeAgo, website } from '@/utils'
 import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
 import { getMeta } from '@/stores/meta'
 
@@ -196,8 +189,13 @@ const route = useRoute()
 const funnel = ref(route.params.name)
 const funnelName = ref('')
 const funnelIcon = ref('')
-const loading = ref(true)
-const board = ref(null)
+const funnelStages = ref([])
+
+const deals = ref({})
+const viewControls = ref(null)
+const loadMore = ref(1)
+const triggerResize = ref(1)
+const updatedPageCount = ref(20)
 
 const { getUser } = usersStore()
 const { getDealStatus } = statusesStore()
@@ -205,55 +203,36 @@ const { getOrganization } = organizationsStore()
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
   getMeta('CRM Deal')
 
-const KANBAN_FIELDS = ['annual_revenue', 'mobile_no', '_assign', 'creation']
+const kanbanFields = JSON.stringify([
+  'annual_revenue',
+  'mobile_no',
+  '_assign',
+  'creation',
+])
 
-// I4/I5: поиск
-const search = ref('')
-const onSearchInput = useDebounceFn(() => setupBoard(), 400)
+// I34: явные колонки воронки (имя+цвет+is_won/is_lost) для ViewControls/KanbanView
+const funnelKanbanColumns = computed(() => {
+  if (!funnelStages.value.length) return ''
+  return JSON.stringify(funnelStages.value)
+})
 
-async function setupBoard() {
-  loading.value = true
+async function loadFunnelMeta() {
   try {
-    const sf = await call('nacifrah.api.get_funnel_meta', { funnel: funnel.value })
-    funnelName.value = sf?.funnel_name || funnel.value
-    funnelIcon.value = sf?.icon || 'filter'
-    const stages = sf?.stages || []
-    const filters = { nacifrah_funnel: funnel.value }
-    const s = (search.value || '').trim()
-    if (s) {
-      const digits = s.replace(/\D/g, '')
-      if (digits && digits.length >= 3) filters.mobile_no = ['like', '%' + digits + '%']
-      else filters.organization = ['like', '%' + s + '%']
-    }
-    board.value = createResource({
-      url: 'crm.api.doc.get_data',
-      params: {
-        doctype: 'CRM Deal',
-        filters,
-        order_by: 'modified desc',
-        page_length: 100,
-        column_field: 'nacifrah_funnel_stage',
-        title_field: 'organization',
-        kanban_columns: JSON.stringify(stages),
-        kanban_fields: JSON.stringify(KANBAN_FIELDS),
-        view: { view_type: 'kanban' },
-      },
-      auto: true,
-    })
+    const m = await call('nacifrah.api.get_funnel_meta', { funnel: funnel.value })
+    funnelName.value = m?.funnel_name || funnel.value
+    funnelIcon.value = m?.icon || 'filter'
+    funnelStages.value = m?.stages || []
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить воронку'))
-  } finally {
-    loading.value = false
   }
 }
-onMounted(setupBoard)
+onMounted(loadFunnelMeta)
 watch(
   () => route.params.name,
   (n) => {
     if (n) {
       funnel.value = n
-      search.value = ''
-      setupBoard()
+      loadFunnelMeta()
     }
   },
 )
@@ -269,9 +248,9 @@ function getRow(name, field) {
 }
 
 const rows = computed(() => {
-  if (!board.value?.data?.data || board.value.data.view_type !== 'kanban')
+  if (!deals.value?.data?.data || deals.value.data.view_type !== 'kanban')
     return []
-  return getKanbanRows(board.value.data.data, board.value.data.fields)
+  return getKanbanRows(deals.value.data.data, deals.value.data.fields)
 })
 
 function getKanbanRows(data, columns) {
@@ -283,15 +262,13 @@ function getKanbanRows(data, columns) {
 }
 
 function parseRows(rowsArr, columns = []) {
-  let key = 'fieldname'
-  let type = 'fieldtype'
   return rowsArr.map((deal) => {
     let _rows = {}
-    ;(board.value.data.rows || []).forEach((row) => {
+    ;(deals.value.data.rows || []).forEach((row) => {
       _rows[row] = deal[row]
-      let fieldType = columns?.find((col) => (col[key] || col.value) == row)?.[
-        type
-      ]
+      let fieldType = columns?.find(
+        (col) => (col['fieldname'] || col.value) == row,
+      )?.['fieldtype']
       if (
         fieldType &&
         ['Date', 'Datetime'].includes(fieldType) &&
@@ -346,7 +323,8 @@ function parseRows(rowsArr, columns = []) {
   })
 }
 
-// ── drag-n-drop: перенос карточки между этапами воронки ──
+// ── drag-n-drop: перенос карточки = смена этапа воронки; операции с колонками НЕ
+// сохраняем (иначе перезатрём вид Сделок, doctype один — CRM Deal). ──
 async function onKanbanUpdate(data) {
   if (data?.item && data?.to) {
     try {
@@ -354,12 +332,14 @@ async function onKanbanUpdate(data) {
         deal: data.item,
         stage: data.to,
       })
-      board.value?.reload?.()
+      deals.value?.reload?.()
     } catch (e) {
       toast.error(e?.messages?.[0] || __('Не удалось переместить'))
-      board.value?.reload?.()
+      deals.value?.reload?.()
     }
+    return
   }
+  // реордер/правки колонок на funnel-борде не персистим
 }
 
 // ── создание сделки на этапе (попап) ──
@@ -384,7 +364,7 @@ async function submitCreate() {
     })
     showCreate.value = false
     createTitle.value = ''
-    board.value?.reload?.()
+    deals.value?.reload?.()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось создать сделку'))
   } finally {

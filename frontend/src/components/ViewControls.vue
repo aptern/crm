@@ -1051,6 +1051,9 @@ function loadMoreKanban(columnName) {
 }
 
 function createOrUpdateStandardView() {
+  // I34: funnel-режим использует общий doctype CRM Deal → НЕ сохраняем стандартный вид,
+  // иначе настройки одной воронки перезатрут борд Сделок и другие воронки.
+  if (props.options?.noViewPersist) return
   if (route.query.view) return
   view.value.doctype = props.doctype
   call(

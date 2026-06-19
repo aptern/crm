@@ -56,7 +56,7 @@ const routes = [
     component: () => import('@/pages/Funnels.vue'),
   },
   {
-    path: '/funnel/:name',
+    path: '/funnel/:name/view/:viewType?',
     name: 'CustomFunnel',
     component: () => import('@/pages/CustomFunnel.vue'),
   },
@@ -230,6 +230,9 @@ router.beforeEach(async (to, from, next) => {
     const activeTab = localStorage.getItem(storageKey) || 'activity'
     const hash = '#' + activeTab
     next({ ...to, hash })
+  } else if (to.name === 'CustomFunnel' && !to.params?.viewType) {
+    // I34: борд воронки использует единый шаблон (ViewControls+KanbanView) → нужен viewType
+    next({ name: 'CustomFunnel', params: { ...to.params, viewType: 'kanban' } })
   } else if (
     [
       'Leads',
