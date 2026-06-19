@@ -71,6 +71,7 @@ import ViewControls from '@/components/ViewControls.vue'
 import { getMeta } from '@/stores/meta'
 import { organizationsStore } from '@/stores/organizations.js'
 import { formatDate, timeAgo } from '@/utils'
+import { formatPhoneDisplay } from '@/utils/ruFormat'
 import { ref, computed } from 'vue'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
@@ -134,6 +135,9 @@ const rows = computed(() => {
           label: contact.company_name,
           logo: getOrganization(contact.company_name)?.organization_logo,
         }
+      } else if (['mobile_no', 'phone', 'actual_mobile_no'].includes(row)) {
+        // I35: телефон в списке контактов — маска +7 (XXX) XXX-XX-XX
+        _rows[row] = contact[row] ? formatPhoneDisplay(contact[row]) : ''
       } else if (['modified', 'creation'].includes(row)) {
         _rows[row] = {
           label: formatDate(contact[row]),

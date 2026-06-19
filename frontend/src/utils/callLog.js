@@ -1,4 +1,5 @@
 import { formatDate, timeAgo } from '@/utils'
+import { formatPhoneDisplay } from '@/utils/ruFormat'
 import { getMeta } from '@/stores/meta'
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
@@ -32,6 +33,9 @@ export function getCallLogDetail(row, log, columns = []) {
       label: statusLabelMap[log.status],
       color: statusColorMap[log.status],
     }
+  } else if (['from', 'to'].includes(row)) {
+    // I35: номера звонка — маска +7 (XXX) XXX-XX-XX
+    return log[row] ? formatPhoneDisplay(log[row]) : ''
   } else if (['modified', 'creation'].includes(row)) {
     return {
       label: formatDate(log[row]),
