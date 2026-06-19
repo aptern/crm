@@ -49,7 +49,12 @@
           class="cursor-pointer border-b border-outline-gray-1 hover:bg-surface-gray-1"
           @click="openCard(e)"
         >
-          <td class="px-3 py-2 text-ink-gray-8">{{ e.employee_name }}</td>
+          <td class="px-3 py-2 text-ink-gray-8">
+            <div class="flex items-center gap-2">
+              <Avatar :image="e.image" :label="e.employee_name" size="sm" />
+              <span>{{ e.employee_name }}</span>
+            </div>
+          </td>
           <td class="px-3 py-2 text-ink-gray-7">{{ e.designation || '—' }}</td>
           <td class="px-3 py-2 text-ink-gray-7">{{ e.department || '—' }}</td>
           <td class="px-3 py-2 text-ink-gray-7">{{ e.user_id || '—' }}</td>
@@ -85,7 +90,20 @@
             <div
               class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-6 py-4"
             >
-              <h3 class="text-xl font-semibold text-ink-gray-9">{{ card.employee_name }}</h3>
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <Avatar :image="card.image" :label="card.employee_name" size="2xl" />
+                  <button
+                    v-if="canManage"
+                    class="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-surface-gray-7 text-ink-white shadow ring-2 ring-surface-modal"
+                    :title="__('Загрузить фото')"
+                    @click="openPhoto(card)"
+                  >
+                    <FeatherIcon name="camera" class="h-3 w-3" />
+                  </button>
+                </div>
+                <h3 class="text-xl font-semibold text-ink-gray-9">{{ card.employee_name }}</h3>
+              </div>
               <Button variant="ghost" icon="x" @click="card = null" />
             </div>
             <div class="flex-1 overflow-y-auto px-6 py-5">
@@ -178,6 +196,12 @@
     </template>
   </Dialog>
 
+  <PhotoCropDialog
+    v-model="showPhoto"
+    :title="photoTarget ? photoTarget.employee_name : ''"
+    @cropped="onCropped"
+  />
+
   <Dialog v-model="showHire" :options="{ size: 'lg' }">
     <template #body>
       <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
@@ -233,12 +257,15 @@
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import PhoneInput from '@/components/Controls/PhoneInput.vue'
+import PhotoCropDialog from '@/components/PhotoCropDialog.vue'
 import { formatPhoneDisplay } from '@/utils/ruFormat'
 import {
+  Avatar,
   Button,
   Dialog,
   FormControl,
   ErrorMessage,
+  FeatherIcon,
   createResource,
   call,
   toast,
@@ -332,6 +359,40 @@ const cardRows = computed(() => {
     { label: __('Статус'), value: statusLabel(e.status) },
   ]
 })
+
+// I37: загрузка фото сотрудника (обрезка 1:1 в PhotoCropDialog)
+const showPhoto = ref(false)
+const photoTarget = ref(null)
+function openPhoto(e) {
+  photoTarget.value = e
+  showPhoto.value = true
+}
+async function onCropped({ blob, name }) {
+  if (!photoTarget.value?.name) return
+  try {
+    const fd = new FormData()
+    fd.append('file', blob, (name || 'photo').replace(/\.[^.]+$/, '') + '.jpg')
+    fd.append('is_private', '0')
+    fd.append('folder', 'Home')
+    const res = await fetch('/api/method/upload_file', {
+      method: 'POST',
+      headers: { 'X-Frappe-CSRF-Token': window.csrf_token || '' },
+      body: fd,
+    })
+    const j = await res.json()
+    const fileUrl = j?.message?.file_url
+    if (!fileUrl) throw new Error('upload failed')
+    await call('nacifrah.hr.set_employee_photo', {
+      employee: photoTarget.value.name,
+      file_url: fileUrl,
+    })
+    if (card.value && card.value.name === photoTarget.value.name) card.value.image = fileUrl
+    await loadEmployees()
+    toast.success(__('Фото обновлено'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось загрузить фото'))
+  }
+}
 
 // ── D3 увольнение + перенос ──────────────────────────────────────────
 const showFire = ref(false)
