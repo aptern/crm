@@ -2,17 +2,20 @@
   <LayoutHeader>
     <template #left-header>
       <div class="flex items-center gap-2">
-        <FeatherIcon :name="board.icon || 'filter'" class="h-5 w-5 text-ink-gray-6" />
+        <FeatherIcon
+          :name="funnelIcon || 'filter'"
+          class="h-5 w-5 text-ink-gray-6"
+        />
         <div class="text-lg font-semibold text-ink-gray-8">
-          {{ board.funnel_name || funnel }}
+          {{ funnelName || funnel }}
         </div>
       </div>
     </template>
   </LayoutHeader>
 
-  <div class="flex-1 overflow-auto p-3">
-    <!-- I4/I5: поиск по организации/телефону внутри воронки (как на нативных бордах) -->
-    <div class="mb-3 max-w-xs">
+  <div class="flex items-center gap-2 px-3 pt-3">
+    <!-- I4/I5: поиск по организации/телефону внутри воронки -->
+    <div class="max-w-xs flex-1">
       <FormControl
         type="text"
         v-model="search"
@@ -20,96 +23,121 @@
         @input="onSearchInput"
       />
     </div>
-    <div v-if="loading" class="p-8 text-center text-sm text-ink-gray-5">
-      {{ __('Загрузка…') }}
-    </div>
-    <div
-      v-else-if="!board.columns?.length"
-      class="p-8 text-center text-sm text-ink-gray-5"
-    >
-      {{ __('В этой воронке нет этапов. Добавьте их в «Параметры воронок».') }}
-    </div>
-    <div v-else class="flex items-start gap-3">
-      <div
-        v-for="col in board.columns"
-        :key="col.stage"
-        class="flex w-72 shrink-0 flex-col gap-2 rounded-lg bg-surface-gray-1 p-2.5"
-      >
-        <div class="flex items-center justify-between">
-          <span
-            class="rounded px-1.5 py-0.5 text-xs font-medium"
-            :class="pill(col.color)"
-          >
-            {{ col.stage }}
-            <span v-if="col.is_won"> ✓</span>
-            <span v-else-if="col.is_lost"> ✕</span>
-          </span>
-          <span class="text-xs text-ink-gray-5">{{ col.count }}</span>
-        </div>
-        <!-- I25/I3: сумма сделок этапа (как на нативных бордах Лиды/Сделки) -->
-        <div
-          v-if="col.sum"
-          class="px-0.5 text-xs font-semibold text-ink-gray-7"
-        >
-          {{ formatRub(col.sum) }}
-        </div>
-
-        <Draggable
-          :list="col.deals"
-          group="funnel-deals"
-          item-key="name"
-          :data-stage="col.stage"
-          class="flex min-h-[8px] flex-col gap-2"
-          @end="onDealDrop"
-        >
-          <template #item="{ element: d }">
-            <!-- I10/I3: клик по карточке → выезд карточки справа (как Лиды/Сделки) -->
-            <div
-              class="cursor-pointer rounded-lg border bg-surface-white p-2.5 text-sm transition hover:border-outline-gray-3 hover:shadow-sm"
-              :data-name="d.name"
-              @click="openCard(d)"
-            >
-              <div class="flex items-center gap-2">
-                <Avatar size="sm" :label="d.title" />
-                <div class="truncate font-medium text-ink-gray-8">
-                  {{ d.title }}
-                </div>
-              </div>
-              <div class="mt-2 flex items-center justify-between">
-                <span class="font-medium text-ink-gray-7">{{
-                  formatRub(d.amount)
-                }}</span>
-                <div @click.stop>
-                  <Dropdown :options="moveOptions(d, col.stage)">
-                    <Button variant="ghost" size="sm" icon="more-horizontal" />
-                  </Dropdown>
-                </div>
-              </div>
-              <div
-                v-if="d.mobile_no"
-                class="mt-1 text-xs text-ink-gray-5"
-              >
-                {{ formatPhoneDisplay(d.mobile_no) }}
-              </div>
-              <div v-if="d.creation" class="mt-1 text-xs text-ink-gray-4">
-                {{ fmtDate(d.creation) }}
-              </div>
-            </div>
-          </template>
-        </Draggable>
-
-        <!-- I29/I3: создание сделки — центральный попап (а не inline-инпут) -->
-        <Button
-          variant="ghost"
-          size="sm"
-          iconLeft="plus"
-          :label="__('Сделка')"
-          class="w-full justify-start"
-          @click="openCreate(col.stage)"
-        />
-      </div>
-    </div>
   </div>
+
+  <div
+    v-if="!board || board.loading"
+    class="p-8 text-center text-sm text-ink-gray-5"
+  >
+    {{ __('Загрузка…') }}
+  </div>
+  <div
+    v-else-if="!board.data?.data?.length"
+    class="p-8 text-center text-sm text-ink-gray-5"
+  >
+    {{ __('В этой воронке нет этапов. Добавьте их в «Параметры воронок».') }}
+  </div>
+  <!-- I33: единый нативный борд (как Лиды/Сделки), сгруппированный по этапу воронки -->
+  <KanbanView
+    v-else
+    v-model="board"
+    :options="{
+      doctype: 'CRM Deal',
+      amountField: 'annual_revenue',
+      boardFilters: { nacifrah_funnel: funnel },
+      getRoute: (row) => ({
+        name: 'Deal',
+        params: { dealId: row.name },
+        query: { viewType: 'kanban' },
+      }),
+      onNewClick: (column) => onNewClick(column),
+    }"
+    @update="onKanbanUpdate"
+  >
+    <template #title="{ titleField, itemName }">
+      <div class="flex gap-2 items-center">
+        <div v-if="titleField === 'status'">
+          <IndicatorIcon :class="getRow(itemName, titleField).color" />
+        </div>
+        <div
+          v-else-if="
+            titleField === 'organization' && getRow(itemName, titleField).label
+          "
+        >
+          <Avatar
+            class="flex items-center"
+            :image="getRow(itemName, titleField).logo"
+            :label="getRow(itemName, titleField).label"
+            size="sm"
+          />
+        </div>
+        <div
+          v-if="['modified', 'creation'].includes(titleField)"
+          class="truncate text-base"
+        >
+          <Tooltip :text="getRow(itemName, titleField).label">
+            <div>{{ getRow(itemName, titleField).timeAgo }}</div>
+          </Tooltip>
+        </div>
+        <div
+          v-else-if="getRow(itemName, titleField).label"
+          class="truncate text-base"
+        >
+          {{ getRow(itemName, titleField).label }}
+        </div>
+        <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
+      </div>
+    </template>
+
+    <template #fields="{ fieldName, itemName }">
+      <div
+        v-if="getRow(itemName, fieldName).label && fieldName !== 'creation'"
+        class="truncate flex items-center gap-2"
+      >
+        <div v-if="fieldName === 'status'">
+          <IndicatorIcon :class="getRow(itemName, fieldName).color" />
+        </div>
+        <div v-else-if="fieldName === 'organization'">
+          <Avatar
+            v-if="getRow(itemName, fieldName).label"
+            class="flex items-center"
+            :image="getRow(itemName, fieldName).logo"
+            :label="getRow(itemName, fieldName).label"
+            size="xs"
+          />
+        </div>
+        <div
+          v-if="['modified', 'creation'].includes(fieldName)"
+          class="truncate text-base"
+        >
+          <Tooltip :text="getRow(itemName, fieldName).label">
+            <div>{{ getRow(itemName, fieldName).timeAgo }}</div>
+          </Tooltip>
+        </div>
+        <div
+          v-else-if="fieldName === '_assign'"
+          class="flex items-center truncate"
+        >
+          <MultipleAvatar
+            :avatars="getRow(itemName, fieldName).label"
+            size="xs"
+          />
+        </div>
+        <div v-else class="truncate text-base">
+          {{ getRow(itemName, fieldName).label }}
+        </div>
+      </div>
+    </template>
+
+    <template #actions="{ itemName }">
+      <div class="flex gap-2 items-center justify-between">
+        <div class="flex items-center gap-1 text-xs text-ink-gray-4">
+          <FeatherIcon name="clock" class="h-3.5 w-3.5" />
+          <span>{{ getRow(itemName, 'creation').label }}</span>
+        </div>
+      </div>
+    </template>
+  </KanbanView>
 
   <Dialog v-model="showCreate" :options="{ title: __('Новая сделка') }">
     <template #body-content>
@@ -140,57 +168,77 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
+import KanbanView from '@/components/Kanban/KanbanView.vue'
+import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import {
   Avatar,
   Button,
   Dialog,
-  Dropdown,
   FeatherIcon,
   FormControl,
+  Tooltip,
   call,
+  createResource,
   toast,
 } from 'frappe-ui'
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
-import Draggable from 'vuedraggable'
-import { recordSlideOverStore } from '@/stores/recordSlideOver'
+import { usersStore } from '@/stores/users'
+import { statusesStore } from '@/stores/statuses'
+import { organizationsStore } from '@/stores/organizations'
+import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
-
-// I3: дата создания на карточке (как на нативных бордах Сделок)
-function fmtDate(s) {
-  if (!s) return ''
-  const d = new Date(String(s).replace(' ', 'T'))
-  if (isNaN(d.getTime())) return ''
-  return (
-    d.toLocaleDateString('ru-RU') +
-    ' ' +
-    d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  )
-}
+import { getMeta } from '@/stores/meta'
 
 const route = useRoute()
 const funnel = ref(route.params.name)
-const board = ref({ columns: [] })
+const funnelName = ref('')
+const funnelIcon = ref('')
 const loading = ref(true)
-// I4/I5: поиск внутри воронки
+const board = ref(null)
+
+const { getUser } = usersStore()
+const { getDealStatus } = statusesStore()
+const { getOrganization } = organizationsStore()
+const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
+  getMeta('CRM Deal')
+
+const KANBAN_FIELDS = ['annual_revenue', 'mobile_no', '_assign', 'creation']
+
+// I4/I5: поиск
 const search = ref('')
-const onSearchInput = useDebounceFn(() => load(), 400)
+const onSearchInput = useDebounceFn(() => setupBoard(), 400)
 
-const { openRecord } = recordSlideOverStore()
-
-// I29: создание сделки через центральный попап
-const showCreate = ref(false)
-const createStage = ref('')
-const createTitle = ref('')
-const creating = ref(false)
-
-async function load() {
+async function setupBoard() {
   loading.value = true
   try {
-    board.value = await call('nacifrah.api.get_board', {
-      funnel: funnel.value,
-      search: search.value || undefined,
+    const sf = await call('nacifrah.api.get_funnel_meta', { funnel: funnel.value })
+    funnelName.value = sf?.funnel_name || funnel.value
+    funnelIcon.value = sf?.icon || 'filter'
+    const stages = sf?.stages || []
+    const filters = { nacifrah_funnel: funnel.value }
+    const s = (search.value || '').trim()
+    if (s) {
+      const digits = s.replace(/\D/g, '')
+      if (digits && digits.length >= 3) filters.mobile_no = ['like', '%' + digits + '%']
+      else filters.organization = ['like', '%' + s + '%']
+    }
+    board.value = createResource({
+      url: 'crm.api.doc.get_data',
+      params: {
+        doctype: 'CRM Deal',
+        filters,
+        order_by: 'modified desc',
+        page_length: 100,
+        column_field: 'nacifrah_funnel_stage',
+        title_field: 'organization',
+        kanban_columns: JSON.stringify(stages),
+        kanban_fields: JSON.stringify(KANBAN_FIELDS),
+        view: { view_type: 'kanban' },
+      },
+      auto: true,
     })
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить воронку'))
@@ -198,29 +246,129 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(setupBoard)
 watch(
   () => route.params.name,
   (n) => {
     if (n) {
       funnel.value = n
       search.value = ''
-      load()
+      setupBoard()
     }
   },
 )
 
-function pill(color) {
-  const c = color || 'gray'
-  if (c === 'black') return '!bg-gray-200 !text-ink-gray-9'
-  return `!bg-${c}-100 !text-${c}-700`
+// ── карточка: те же rows/parseRows, что на бордах Сделок (единый шаблон) ──
+function getRow(name, field) {
+  function getValue(value) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value
+    return { label: value }
+  }
+  const r = rows.value?.find((row) => row.name == name)
+  return getValue(r ? r[field] : '')
 }
-// I10: открыть сделку в right-slide-over (единая логика со Сделками/Лидами)
-function openCard(d) {
-  openRecord('CRM Deal', d.name)
+
+const rows = computed(() => {
+  if (!board.value?.data?.data || board.value.data.view_type !== 'kanban')
+    return []
+  return getKanbanRows(board.value.data.data, board.value.data.fields)
+})
+
+function getKanbanRows(data, columns) {
+  let _rows = []
+  data.forEach((column) => {
+    column.data?.forEach((row) => _rows.push(row))
+  })
+  return parseRows(_rows, columns)
 }
-function openCreate(stage) {
-  createStage.value = stage
+
+function parseRows(rowsArr, columns = []) {
+  let key = 'fieldname'
+  let type = 'fieldtype'
+  return rowsArr.map((deal) => {
+    let _rows = {}
+    ;(board.value.data.rows || []).forEach((row) => {
+      _rows[row] = deal[row]
+      let fieldType = columns?.find((col) => (col[key] || col.value) == row)?.[
+        type
+      ]
+      if (
+        fieldType &&
+        ['Date', 'Datetime'].includes(fieldType) &&
+        !['modified', 'creation'].includes(row)
+      ) {
+        _rows[row] = formatDate(deal[row], '', true, fieldType == 'Datetime')
+      }
+      if (fieldType && fieldType == 'Currency') {
+        _rows[row] =
+          row === 'annual_revenue'
+            ? formatRub(deal[row])
+            : getFormattedCurrency(row, deal)
+      }
+      if (fieldType && fieldType == 'Float') _rows[row] = getFormattedFloat(row, deal)
+      if (fieldType && fieldType == 'Percent') _rows[row] = getFormattedPercent(row, deal)
+      if (row == 'organization') {
+        _rows[row] = {
+          label: deal.organization,
+          logo: getOrganization(deal.organization)?.organization_logo,
+        }
+      } else if (row === 'website') {
+        _rows[row] = website(deal.website)
+      } else if (row == 'status') {
+        _rows[row] = {
+          label: deal.status,
+          color: getDealStatus(deal.status)?.color,
+        }
+      } else if (row == 'deal_owner') {
+        _rows[row] = {
+          label: deal.deal_owner && getUser(deal.deal_owner).full_name,
+          ...(deal.deal_owner && getUser(deal.deal_owner)),
+        }
+      } else if (row == '_assign') {
+        let assignees = JSON.parse(deal._assign || '[]')
+        _rows[row] = assignees.map((user) => ({
+          name: user,
+          image: getUser(user).user_image,
+          label: getUser(user).full_name,
+        }))
+      } else if (['modified', 'creation'].includes(row)) {
+        _rows[row] = {
+          label: formatDate(deal[row], '', true, true),
+          timeAgo: __(timeAgo(deal[row])),
+        }
+      } else if (row === 'mobile_no') {
+        _rows[row] = {
+          label: deal.mobile_no ? formatPhoneDisplay(deal.mobile_no) : '',
+        }
+      }
+    })
+    return _rows
+  })
+}
+
+// ── drag-n-drop: перенос карточки между этапами воронки ──
+async function onKanbanUpdate(data) {
+  if (data?.item && data?.to) {
+    try {
+      await call('nacifrah.api.move_funnel_deal', {
+        deal: data.item,
+        stage: data.to,
+      })
+      board.value?.reload?.()
+    } catch (e) {
+      toast.error(e?.messages?.[0] || __('Не удалось переместить'))
+      board.value?.reload?.()
+    }
+  }
+}
+
+// ── создание сделки на этапе (попап) ──
+const showCreate = ref(false)
+const createStage = ref('')
+const createTitle = ref('')
+const creating = ref(false)
+function onNewClick(column) {
+  createStage.value = column?.column?.name || ''
   createTitle.value = ''
   showCreate.value = true
 }
@@ -236,34 +384,11 @@ async function submitCreate() {
     })
     showCreate.value = false
     createTitle.value = ''
-    await load()
+    board.value?.reload?.()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось создать сделку'))
   } finally {
     creating.value = false
-  }
-}
-function moveOptions(d, current) {
-  return (board.value.columns || [])
-    .filter((c) => c.stage !== current)
-    .map((c) => ({
-      label: '→ ' + c.stage,
-      onClick: () => moveDeal(d.name, c.stage),
-    }))
-}
-async function moveDeal(deal, stage) {
-  try {
-    await call('nacifrah.api.move_funnel_deal', { deal, stage })
-    await load()
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось переместить'))
-  }
-}
-function onDealDrop(e) {
-  const stage = e?.to?.dataset?.stage
-  const deal = e?.item?.dataset?.name
-  if (stage && deal && e.from?.dataset?.stage !== stage) {
-    moveDeal(deal, stage)
   }
 }
 </script>
