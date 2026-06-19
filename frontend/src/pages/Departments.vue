@@ -24,14 +24,6 @@
   </LayoutHeader>
 
   <div class="flex-1 overflow-auto px-4 py-4">
-    <p class="mb-4 max-w-2xl text-sm text-ink-gray-5">
-      {{
-        __(
-          'Структура компании сверху вниз: компания и CEO, от них — отделы и сотрудники. Кнопки на карточках управляют структурой.',
-        )
-      }}
-    </p>
-
     <!-- ОРГ-ЧАРТ -->
     <div v-if="chart" class="nac-org min-w-full overflow-x-auto pb-6">
       <ul>

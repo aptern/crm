@@ -48,7 +48,7 @@ import Departments from '@/pages/Departments.vue'
 import Employees from '@/pages/Employees.vue'
 import Permissions from '@/pages/Permissions.vue'
 import DesignationsTab from '@/components/Team/DesignationsTab.vue'
-import { Button } from 'frappe-ui'
+import { Button, createResource } from 'frappe-ui'
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usersStore } from '@/stores/users'
@@ -57,13 +57,27 @@ const { isManager } = usersStore()
 const route = useRoute()
 const router = useRouter()
 
-const tabs = [
+// K3.1: вкладка «Права доступа» видна только тем, кому разрешено политикой
+const canManagePerms = ref(false)
+createResource({
+  url: 'nacifrah.hr.can_manage_perms',
+  auto: true,
+  onSuccess(v) {
+    canManagePerms.value = !!v
+    if (!v && tab.value === 'perms') setTab('org')
+  },
+})
+
+const ALL_TABS = [
   { key: 'org', label: __('Оргструктура') },
   { key: 'desig', label: __('Должности') },
   { key: 'emp', label: __('Сотрудники') },
-  { key: 'perms', label: __('Права доступа') },
+  { key: 'perms', label: __('Права доступа'), guard: 'perms' },
 ]
-const validTabs = tabs.map((t) => t.key)
+const tabs = computed(() =>
+  ALL_TABS.filter((t) => t.guard !== 'perms' || canManagePerms.value),
+)
+const validTabs = ALL_TABS.map((t) => t.key)
 
 const tab = ref(validTabs.includes(route.params.tab) ? route.params.tab : 'org')
 function setTab(k) {

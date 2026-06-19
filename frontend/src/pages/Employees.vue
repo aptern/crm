@@ -593,12 +593,21 @@ const departments = createResource({
   auto: true,
 })
 
-const roleOptions = [
-  { label: 'Сотрудник (Specialist)', value: 'Specialist' },
-  { label: 'Руководитель (Agency Head)', value: 'Agency Head' },
-  { label: 'Администратор (Agency Admin)', value: 'Agency Admin' },
-  { label: 'Наблюдатель (Observer)', value: 'Observer' },
-]
+// Единый источник ролей — бэкенд nacifrah.hr.get_agency_roles (правило централизации).
+// «Наблюдатель» убран по требованию заказчика («непонятная роль»).
+const roleOptions = ref([
+  { label: 'Сотрудник', value: 'Specialist' },
+  { label: 'Руководитель', value: 'Agency Head' },
+  { label: 'Администратор', value: 'Agency Admin' },
+])
+createResource({
+  url: 'nacifrah.hr.get_agency_roles',
+  auto: true,
+  onSuccess(rows) {
+    if (Array.isArray(rows) && rows.length)
+      roleOptions.value = rows.map((r) => ({ label: r.label, value: r.value }))
+  },
+})
 const designationOptions = computed(() => [
   { label: '—', value: '' },
   ...((designations.data || []).map((d) => ({ label: d.name, value: d.name }))),

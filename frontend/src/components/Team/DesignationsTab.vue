@@ -6,10 +6,6 @@
 -->
 <template>
   <div class="flex-1 overflow-auto px-4 py-4">
-    <p class="mb-3 max-w-2xl text-sm text-ink-gray-5">
-      {{ __('Сотрудники сгруппированы по должностям. Должности — общий справочник: меняешь здесь, меняется везде (найм, карточка сотрудника).') }}
-    </p>
-
     <div class="flex flex-col gap-2">
       <div
         v-for="d in groups"
