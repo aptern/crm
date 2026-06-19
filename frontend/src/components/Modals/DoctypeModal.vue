@@ -69,6 +69,7 @@
             >
               <div
                 class="flex-1 overflow-y-auto border-r border-outline-gray-1 px-6 py-5"
+                @keydown.enter="onEnterSubmit"
               >
                 <FieldLayout
                   v-if="layout.data"
@@ -84,7 +85,7 @@
                 <TaskActivityFeed :task="doc.name" :embedded="true" />
               </div>
             </div>
-            <div v-else class="flex-1 overflow-y-auto px-6 py-5">
+            <div v-else class="flex-1 overflow-y-auto px-6 py-5" @keydown.enter="onEnterSubmit">
               <FieldLayout
                 v-if="layout.data"
                 :tabs="layout.data"
@@ -194,6 +195,21 @@ const _create = createResource({
     error.value = err.messages?.[0] || 'Could not create document'
   },
 })
+
+// M3: Enter = «Создать»/«Сохранить», кроме textarea/rich-редактора (там Enter — перенос)
+function onEnterSubmit(e) {
+  const t = e.target
+  if (
+    e.shiftKey ||
+    t?.tagName === 'TEXTAREA' ||
+    t?.isContentEditable ||
+    t?.closest?.('.ProseMirror, [contenteditable], textarea')
+  )
+    return
+  if (_create.loading || document.save?.loading) return
+  e.preventDefault()
+  editMode.value ? update() : create()
+}
 
 async function create() {
   await triggerOnBeforeCreate?.()

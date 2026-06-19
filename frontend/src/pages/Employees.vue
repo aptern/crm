@@ -254,7 +254,8 @@
 
   <Dialog v-model="showHire" :options="{ size: 'lg' }">
     <template #body>
-      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
+      <!-- M3: Enter нанимает (кроме textarea) -->
+      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6" @keydown.enter="onEnterHire">
         <h3 class="mb-4 text-xl font-semibold text-ink-gray-9">{{ __('Нанять сотрудника') }}</h3>
         <div class="flex flex-col gap-3">
           <!-- M9: ФИО тремя полями; в системе показываем «Имя Фамилия» -->
@@ -657,6 +658,21 @@ function openHire() {
     cell_number: '',
   })
   showHire.value = true
+}
+
+// M3: Enter нанимает (кроме textarea/rich-редактора)
+function onEnterHire(e) {
+  const t = e.target
+  if (
+    e.shiftKey ||
+    t?.tagName === 'TEXTAREA' ||
+    t?.isContentEditable ||
+    t?.closest?.('[contenteditable], textarea')
+  )
+    return
+  if (hiring.value) return
+  e.preventDefault()
+  doHire()
 }
 
 async function doHire() {

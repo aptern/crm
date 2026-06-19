@@ -1,7 +1,8 @@
 <template>
   <Dialog v-model="show" :options="{ size: '3xl' }">
     <template #body>
-      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
+      <!-- M3: Enter создаёт лид (кроме textarea/rich-редактора) -->
+      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6" @keydown.enter="onEnterCreate">
         <div class="mb-5 flex items-center justify-between">
           <div>
             <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
@@ -111,6 +112,21 @@ const tabs = createResource({
 const createLead = createResource({
   url: 'frappe.client.insert',
 })
+
+// M3: Enter = «Создать», кроме textarea/rich-редактора (там Enter — перенос строки)
+function onEnterCreate(e) {
+  const t = e.target
+  if (
+    e.shiftKey ||
+    t?.tagName === 'TEXTAREA' ||
+    t?.isContentEditable ||
+    t?.closest?.('.ProseMirror, [contenteditable], textarea')
+  )
+    return
+  if (createLead.loading) return
+  e.preventDefault()
+  createNewLead()
+}
 
 async function createNewLead() {
   if (lead.doc.website && !lead.doc.website.startsWith('http')) {

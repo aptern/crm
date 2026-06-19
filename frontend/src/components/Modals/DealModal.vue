@@ -1,7 +1,8 @@
 <template>
   <Dialog v-model="show" :options="{ size: '3xl' }">
     <template #body>
-      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
+      <!-- M3: Enter создаёт сделку (кроме textarea/rich-редактора и открытого автокомплита) -->
+      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6" @keydown.enter="onEnterCreate">
         <div class="mb-5 flex items-center justify-between">
           <div>
             <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
@@ -170,6 +171,21 @@ const tabs = createResource({
 })
 
 const dealStatuses = computed(() => statusOptions('deal'))
+
+// M3: Enter = «Создать», но не из textarea/rich-редактора (там Enter — перенос строки)
+function onEnterCreate(e) {
+  const t = e.target
+  if (
+    e.shiftKey ||
+    t?.tagName === 'TEXTAREA' ||
+    t?.isContentEditable ||
+    t?.closest?.('.ProseMirror, [contenteditable], textarea')
+  )
+    return
+  if (isDealCreating.value) return
+  e.preventDefault()
+  createDeal()
+}
 
 async function createDeal() {
   if (deal.doc.website && !deal.doc.website.startsWith('http')) {

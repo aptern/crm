@@ -1,7 +1,8 @@
 <template>
   <Dialog v-model="show" :options="{ size: 'xl' }">
     <template #body>
-      <div class="px-4 pt-5 pb-6 bg-surface-modal sm:px-6">
+      <!-- M3: Enter создаёт организацию (кроме textarea/rich-редактора) -->
+      <div class="px-4 pt-5 pb-6 bg-surface-modal sm:px-6" @keydown.enter="onEnterCreate">
         <div class="flex items-center justify-between mb-5">
           <div>
             <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
@@ -80,6 +81,21 @@ const error = ref(null)
 
 const { document: organization, triggerOnBeforeCreate } =
   useDocument('CRM Organization')
+
+// M3: Enter = «Создать», кроме textarea/rich-редактора
+function onEnterCreate(e) {
+  const t = e.target
+  if (
+    e.shiftKey ||
+    t?.tagName === 'TEXTAREA' ||
+    t?.isContentEditable ||
+    t?.closest?.('.ProseMirror, [contenteditable], textarea')
+  )
+    return
+  if (loading.value) return
+  e.preventDefault()
+  createOrganization()
+}
 
 async function createOrganization() {
   loading.value = true

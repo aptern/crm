@@ -1,7 +1,8 @@
 <template>
   <Dialog v-model="show" :options="{ size: 'xl' }">
     <template #body>
-      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
+      <!-- M3: Enter создаёт контакт (кроме textarea/rich-редактора) -->
+      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6" @keydown.enter="onEnterCreate">
         <div class="mb-5 flex items-center justify-between">
           <div>
             <h3 class="text-2xl font-semibold leading-6 text-ink-gray-9">
@@ -131,6 +132,21 @@ const insertContact = createResource({
     error.value = err.error?.messages?.[0]
   },
 })
+
+// M3: Enter = «Создать», кроме textarea/rich-редактора
+function onEnterCreate(e) {
+  const t = e.target
+  if (
+    e.shiftKey ||
+    t?.tagName === 'TEXTAREA' ||
+    t?.isContentEditable ||
+    t?.closest?.('.ProseMirror, [contenteditable], textarea')
+  )
+    return
+  if (insertContact.loading) return
+  e.preventDefault()
+  createContact()
+}
 
 async function createContact() {
   error.value = null
