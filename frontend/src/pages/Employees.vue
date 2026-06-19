@@ -257,7 +257,12 @@
       <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6">
         <h3 class="mb-4 text-xl font-semibold text-ink-gray-9">{{ __('Нанять сотрудника') }}</h3>
         <div class="flex flex-col gap-3">
-          <FormControl :label="__('ФИО')" v-model="form.full_name" :placeholder="__('Иван Петров')" />
+          <!-- M9: ФИО тремя полями; в системе показываем «Имя Фамилия» -->
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <FormControl :label="__('Фамилия')" v-model="form.last_name" :placeholder="__('Петров')" />
+            <FormControl :label="__('Имя')" v-model="form.first_name" :placeholder="__('Иван')" />
+            <FormControl :label="__('Отчество')" v-model="form.middle_name" :placeholder="__('Иванович')" />
+          </div>
           <FormControl
             type="email"
             :label="__('Email (логин)')"
@@ -572,7 +577,9 @@ const showHire = ref(false)
 const hiring = ref(false)
 const error = ref('')
 const form = reactive({
-  full_name: '',
+  last_name: '', // M9: ФИО тремя полями
+  first_name: '',
+  middle_name: '',
   email: '',
   password: '',
   role: 'Specialist',
@@ -638,28 +645,34 @@ const departmentFilterOptions = computed(() => [
 function openHire() {
   error.value = ''
   Object.assign(form, {
-    full_name: '',
+    last_name: '',
+    first_name: '',
+    middle_name: '',
     email: '',
     password: '',
     role: 'Specialist',
     designation: '',
     designationNew: '',
     department: '',
+    cell_number: '',
   })
   showHire.value = true
 }
 
 async function doHire() {
   error.value = ''
-  if (!form.full_name || !form.email) {
-    error.value = __('Укажите ФИО и email')
+  // M9: имя и фамилия обязательны (отображаем «Имя Фамилия»)
+  if (!form.first_name || !form.last_name || !form.email) {
+    error.value = __('Укажите Фамилию, Имя и email')
     return
   }
   hiring.value = true
   try {
     const designation = await ensureDesignation(form.designation, form.designationNew)
     await call('nacifrah.hr.hire_employee', {
-      full_name: form.full_name,
+      first_name: form.first_name,
+      last_name: form.last_name,
+      middle_name: form.middle_name || null,
       email: form.email,
       role: form.role,
       designation: designation,
