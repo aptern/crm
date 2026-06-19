@@ -1,14 +1,21 @@
 <template>
   <!-- I31: маска телефона +7 (XXX) XXX-XX-XX. Внутри показываем маску, наружу
        отдаём нормализованные цифры (поиск/интеграции работают как раньше). -->
-  <TextInput
-    type="text"
-    inputmode="tel"
-    :value="display"
-    :placeholder="placeholder || '+7 (***) ***-**-**'"
-    :disabled="disabled"
-    @input="onInput"
-  />
+  <div>
+    <label
+      v-if="label"
+      class="mb-1.5 block text-xs text-ink-gray-5"
+      >{{ label }}</label
+    >
+    <TextInput
+      type="text"
+      inputmode="tel"
+      :value="display"
+      :placeholder="placeholder || '+7 (***) ***-**-**'"
+      :disabled="disabled"
+      @input="onInput"
+    />
+  </div>
 </template>
 
 <script setup>
@@ -20,6 +27,7 @@ const props = defineProps({
   value: { type: [String, Number], default: '' },
   placeholder: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
+  label: { type: String, default: '' },
 })
 const emit = defineEmits(['change', 'update:modelValue'])
 

@@ -185,6 +185,11 @@
             :options="departmentOptions"
             v-model="form.department"
           />
+          <PhoneInput
+            :label="__('Телефон')"
+            :value="form.cell_number"
+            @change="(v) => (form.cell_number = v)"
+          />
           <ErrorMessage v-if="error" :message="error" />
         </div>
         <div class="mt-5 flex flex-row-reverse gap-2">
@@ -203,6 +208,8 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import PhoneInput from '@/components/Controls/PhoneInput.vue'
+import { formatPhoneDisplay } from '@/utils/ruFormat'
 import {
   Button,
   Dialog,
@@ -273,6 +280,7 @@ const cardRows = computed(() => {
   return [
     { label: __('Должность'), value: e.designation },
     { label: __('Отдел'), value: e.department },
+    { label: __('Телефон'), value: formatPhoneDisplay(e.cell_number) },
     { label: __('Логин'), value: e.user_id },
     { label: __('Статус'), value: statusLabel(e.status) },
   ]
@@ -338,6 +346,7 @@ const form = reactive({
   role: 'Specialist',
   designation: '',
   department: '',
+  cell_number: '', // I32: телефон сотрудника
 })
 
 const designations = createResource({
@@ -398,6 +407,7 @@ async function doHire() {
       designation: form.designation || null,
       department: form.department || null,
       password: form.password || null,
+      cell_number: form.cell_number || null,
     })
     showHire.value = false
     loadEmployees()
