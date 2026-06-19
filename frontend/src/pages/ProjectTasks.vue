@@ -332,14 +332,18 @@
           {{ taskProjectName(itemName) }}
         </span>
         <span v-else />
-        <Dropdown
-          class="flex items-center"
-          :options="actions(itemName)"
-          variant="ghost"
-          @click.stop.prevent
-        >
-          <Button icon="more-horizontal" variant="ghost" size="sm" />
-        </Dropdown>
+        <!-- M7: «...» НЕ должно открывать задачу — клик гасим на div+Button (как у приоритета);
+             меню = быстрые действия + Удалить -->
+        <div class="flex items-center" @click.stop.prevent>
+          <Dropdown :options="actions(itemName)" variant="ghost">
+            <Button
+              icon="more-horizontal"
+              variant="ghost"
+              size="sm"
+              @click.stop.prevent
+            />
+          </Dropdown>
+        </div>
       </div>
     </template>
   </KanbanView>
@@ -1170,16 +1174,43 @@ function createTask(column) {
 }
 
 function actions(name) {
+  // M7: быстрые действия + Удалить (меню «...», без открытия задачи)
+  const stage = getRow(name, 'nacifrah_stage')?.label
   return [
     {
-      label: __('Delete'),
+      label: __('Отметить выполненной'),
+      icon: 'check-circle',
+      condition: () => stage !== 'Выполнена',
+      onClick: () => setTaskStage(name, 'Выполнена'),
+    },
+    {
+      label: __('В работу'),
+      icon: 'play',
+      condition: () => stage !== 'В работе',
+      onClick: () => setTaskStage(name, 'В работе'),
+    },
+    {
+      label: __('Удалить'),
       icon: 'trash-2',
       onClick: () => {
         deleteTask(name)
         tasks.value.reload()
       },
     },
-  ]
+  ].filter((a) => (a.condition ? a.condition() : true))
+}
+
+async function setTaskStage(name, stage) {
+  try {
+    await call('frappe.client.set_value', {
+      doctype: 'CRM Task',
+      name,
+      fieldname: { nacifrah_stage: stage },
+    })
+    tasks.value.reload()
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось обновить задачу'))
+  }
 }
 
 async function deleteTask(name) {
