@@ -1137,12 +1137,14 @@ function defaultDueDate() {
 }
 
 function createTask(column) {
+  const project = route.params.projectId || selected.value[0]
   const defaults = {
     status: 'Backlog',
     priority: 'Medium',
     due_date: defaultDueDate(),
     reference_doctype: 'CRM Deal',
-    reference_docname: route.params.projectId || selected.value[0],
+    reference_docname: project,
+    nacifrah_project: project, // M6(в): пред-заполняем поле «Проект» из контекста
   }
 
   if (column?.column?.name) {

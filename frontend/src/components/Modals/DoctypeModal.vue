@@ -212,6 +212,16 @@ function onEnterSubmit(e) {
 }
 
 async function create() {
+  // M6(в): для задачи проект обязателен В ФОРМЕ (не на доктайпе — чтобы не ломать
+  // автоматику/регулярные задачи). reference_docname — на случай контекста проекта.
+  if (
+    props.doctype === 'CRM Task' &&
+    !document.doc?.nacifrah_project &&
+    !document.doc?.reference_docname
+  ) {
+    error.value = __('Выберите проект')
+    return
+  }
   await triggerOnBeforeCreate?.()
 
   _create.submit({
