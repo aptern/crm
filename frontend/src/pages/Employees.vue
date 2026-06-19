@@ -101,7 +101,7 @@
                   {{ __('Телефон') }}
                 </div>
                 <div class="flex-1">
-                  <template v-if="canManage && card.user_id">
+                  <template v-if="canManage">
                     <PhoneInput
                       :value="card.cell_number"
                       @change="(v) => (phoneEdit = v)"
@@ -305,12 +305,13 @@ function openCard(e) {
 const phoneEdit = ref(null)
 const savingPhone = ref(false)
 async function saveEmployeePhone() {
-  if (!card.value?.user_id) return
+  if (!card.value?.name) return
   savingPhone.value = true
   try {
     const val = phoneEdit.value ?? card.value.cell_number ?? ''
     await call('nacifrah.hr.set_employee_phone', {
-      user: card.value.user_id,
+      employee: card.value.name,
+      user: card.value.user_id || null,
       cell_number: val,
     })
     card.value.cell_number = val
