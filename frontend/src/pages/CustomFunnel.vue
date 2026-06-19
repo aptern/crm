@@ -1,3 +1,6 @@
+<!-- Кастомная воронка — тонкая обёртка над единым шаблоном доски <SalesBoard> (I34).
+     Отличия воронки: колонки по этапам (nacifrah_funnel_stage), перенос = смена этапа,
+     создание сделки на этапе. Весь остальной вид/функционал — из общего шаблона. -->
 <template>
   <LayoutHeader>
     <template #left-header>
@@ -13,125 +16,28 @@
     </template>
   </LayoutHeader>
 
-  <!-- I34: тот же тулбар, что у Лидов/Сделок (фильтры, «Мои», «в работе», настройка
-       канбана, поиск). column_field=nacifrah_funnel_stage + явные колонки из воронки. -->
-  <ViewControls
-    ref="viewControls"
+  <SalesBoard
+    ref="board"
     v-model="deals"
-    v-model:loadMore="loadMore"
-    v-model:resizeColumn="triggerResize"
-    v-model:updatedPageCount="updatedPageCount"
+    v-model:viewControls="viewControls"
     doctype="CRM Deal"
     :filters="{ nacifrah_funnel: funnel }"
-    :options="{
-      allowedViews: ['kanban'],
-      defaultColumnField: 'nacifrah_funnel_stage',
-      defaultKanbanFields: kanbanFields,
-      kanbanColumns: funnelKanbanColumns,
-      noViewPersist: true,
-    }"
-  />
-  <KanbanView
-    v-if="route.params.viewType == 'kanban'"
-    v-model="deals"
-    :options="{
-      doctype: 'CRM Deal',
-      amountField: 'annual_revenue',
-      boardFilters: { nacifrah_funnel: funnel },
-      getRoute: (row) => ({
+    :boardFilters="{ nacifrah_funnel: funnel }"
+    :kanbanFields="kanbanFields"
+    :allowedViews="['kanban']"
+    defaultColumnField="nacifrah_funnel_stage"
+    :kanbanColumns="funnelKanbanColumns"
+    :noViewPersist="true"
+    :getRoute="
+      (row) => ({
         name: 'Deal',
         params: { dealId: row.name },
         query: { viewType: 'kanban' },
-      }),
-      onNewClick: (column) => onNewClick(column),
-    }"
-    @update="onKanbanUpdate"
-    @loadMore="(columnName) => viewControls.loadMoreKanban(columnName)"
-  >
-    <template #title="{ titleField, itemName }">
-      <div class="flex gap-2 items-center">
-        <div v-if="titleField === 'status'">
-          <IndicatorIcon :class="getRow(itemName, titleField).color" />
-        </div>
-        <div
-          v-else-if="
-            titleField === 'organization' && getRow(itemName, titleField).label
-          "
-        >
-          <Avatar
-            class="flex items-center"
-            :image="getRow(itemName, titleField).logo"
-            :label="getRow(itemName, titleField).label"
-            size="sm"
-          />
-        </div>
-        <div
-          v-if="['modified', 'creation'].includes(titleField)"
-          class="truncate text-base"
-        >
-          <Tooltip :text="getRow(itemName, titleField).label">
-            <div>{{ getRow(itemName, titleField).timeAgo }}</div>
-          </Tooltip>
-        </div>
-        <div
-          v-else-if="getRow(itemName, titleField).label"
-          class="truncate text-base"
-        >
-          {{ getRow(itemName, titleField).label }}
-        </div>
-        <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
-      </div>
-    </template>
-
-    <template #fields="{ fieldName, itemName }">
-      <div
-        v-if="getRow(itemName, fieldName).label && fieldName !== 'creation'"
-        class="truncate flex items-center gap-2"
-      >
-        <div v-if="fieldName === 'status'">
-          <IndicatorIcon :class="getRow(itemName, fieldName).color" />
-        </div>
-        <div v-else-if="fieldName === 'organization'">
-          <Avatar
-            v-if="getRow(itemName, fieldName).label"
-            class="flex items-center"
-            :image="getRow(itemName, fieldName).logo"
-            :label="getRow(itemName, fieldName).label"
-            size="xs"
-          />
-        </div>
-        <div
-          v-if="['modified', 'creation'].includes(fieldName)"
-          class="truncate text-base"
-        >
-          <Tooltip :text="getRow(itemName, fieldName).label">
-            <div>{{ getRow(itemName, fieldName).timeAgo }}</div>
-          </Tooltip>
-        </div>
-        <div
-          v-else-if="fieldName === '_assign'"
-          class="flex items-center truncate"
-        >
-          <MultipleAvatar
-            :avatars="getRow(itemName, fieldName).label"
-            size="xs"
-          />
-        </div>
-        <div v-else class="truncate text-base">
-          {{ getRow(itemName, fieldName).label }}
-        </div>
-      </div>
-    </template>
-
-    <template #actions="{ itemName }">
-      <div class="flex gap-2 items-center justify-between">
-        <div class="flex items-center gap-1 text-xs text-ink-gray-4">
-          <FeatherIcon name="clock" class="h-3.5 w-3.5" />
-          <span>{{ getRow(itemName, 'creation').label }}</span>
-        </div>
-      </div>
-    </template>
-  </KanbanView>
+      })
+    "
+    :onNewClick="onNewClick"
+    :moveHandler="onMove"
+  />
 
   <Dialog v-model="showCreate" :options="{ title: __('Новая сделка') }">
     <template #body-content>
@@ -162,28 +68,10 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
-import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import KanbanView from '@/components/Kanban/KanbanView.vue'
-import ViewControls from '@/components/ViewControls.vue'
-import MultipleAvatar from '@/components/MultipleAvatar.vue'
-import {
-  Avatar,
-  Button,
-  Dialog,
-  FeatherIcon,
-  FormControl,
-  Tooltip,
-  call,
-  toast,
-} from 'frappe-ui'
+import SalesBoard from '@/components/SalesBoard.vue'
+import { Button, Dialog, FeatherIcon, FormControl, call, toast } from 'frappe-ui'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { usersStore } from '@/stores/users'
-import { statusesStore } from '@/stores/statuses'
-import { organizationsStore } from '@/stores/organizations'
-import { formatDate, timeAgo, website } from '@/utils'
-import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
-import { getMeta } from '@/stores/meta'
 
 const route = useRoute()
 const funnel = ref(route.params.name)
@@ -191,17 +79,9 @@ const funnelName = ref('')
 const funnelIcon = ref('')
 const funnelStages = ref([])
 
-const deals = ref({})
+const board = ref(null)
 const viewControls = ref(null)
-const loadMore = ref(1)
-const triggerResize = ref(1)
-const updatedPageCount = ref(20)
-
-const { getUser } = usersStore()
-const { getDealStatus } = statusesStore()
-const { getOrganization } = organizationsStore()
-const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } =
-  getMeta('CRM Deal')
+const deals = ref({})
 
 const kanbanFields = JSON.stringify([
   'annual_revenue',
@@ -210,7 +90,7 @@ const kanbanFields = JSON.stringify([
   'creation',
 ])
 
-// I34: явные колонки воронки (имя+цвет+is_won/is_lost) для ViewControls/KanbanView
+// явные колонки воронки (имя+цвет+is_won/is_lost) для ViewControls/KanbanView
 const funnelKanbanColumns = computed(() => {
   if (!funnelStages.value.length) return ''
   return JSON.stringify(funnelStages.value)
@@ -237,95 +117,8 @@ watch(
   },
 )
 
-// ── карточка: те же rows/parseRows, что на бордах Сделок (единый шаблон) ──
-function getRow(name, field) {
-  function getValue(value) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) return value
-    return { label: value }
-  }
-  const r = rows.value?.find((row) => row.name == name)
-  return getValue(r ? r[field] : '')
-}
-
-const rows = computed(() => {
-  if (!deals.value?.data?.data || deals.value.data.view_type !== 'kanban')
-    return []
-  return getKanbanRows(deals.value.data.data, deals.value.data.fields)
-})
-
-function getKanbanRows(data, columns) {
-  let _rows = []
-  data.forEach((column) => {
-    column.data?.forEach((row) => _rows.push(row))
-  })
-  return parseRows(_rows, columns)
-}
-
-function parseRows(rowsArr, columns = []) {
-  return rowsArr.map((deal) => {
-    let _rows = {}
-    ;(deals.value.data.rows || []).forEach((row) => {
-      _rows[row] = deal[row]
-      let fieldType = columns?.find(
-        (col) => (col['fieldname'] || col.value) == row,
-      )?.['fieldtype']
-      if (
-        fieldType &&
-        ['Date', 'Datetime'].includes(fieldType) &&
-        !['modified', 'creation'].includes(row)
-      ) {
-        _rows[row] = formatDate(deal[row], '', true, fieldType == 'Datetime')
-      }
-      if (fieldType && fieldType == 'Currency') {
-        _rows[row] =
-          row === 'annual_revenue'
-            ? formatRub(deal[row])
-            : getFormattedCurrency(row, deal)
-      }
-      if (fieldType && fieldType == 'Float') _rows[row] = getFormattedFloat(row, deal)
-      if (fieldType && fieldType == 'Percent') _rows[row] = getFormattedPercent(row, deal)
-      if (row == 'organization') {
-        _rows[row] = {
-          label: deal.organization,
-          logo: getOrganization(deal.organization)?.organization_logo,
-        }
-      } else if (row === 'website') {
-        _rows[row] = website(deal.website)
-      } else if (row == 'status') {
-        _rows[row] = {
-          label: deal.status,
-          color: getDealStatus(deal.status)?.color,
-        }
-      } else if (row == 'deal_owner') {
-        _rows[row] = {
-          label: deal.deal_owner && getUser(deal.deal_owner).full_name,
-          ...(deal.deal_owner && getUser(deal.deal_owner)),
-        }
-      } else if (row == '_assign') {
-        let assignees = JSON.parse(deal._assign || '[]')
-        _rows[row] = assignees.map((user) => ({
-          name: user,
-          image: getUser(user).user_image,
-          label: getUser(user).full_name,
-        }))
-      } else if (['modified', 'creation'].includes(row)) {
-        _rows[row] = {
-          label: formatDate(deal[row], '', true, true),
-          timeAgo: __(timeAgo(deal[row])),
-        }
-      } else if (row === 'mobile_no') {
-        _rows[row] = {
-          label: deal.mobile_no ? formatPhoneDisplay(deal.mobile_no) : '',
-        }
-      }
-    })
-    return _rows
-  })
-}
-
-// ── drag-n-drop: перенос карточки = смена этапа воронки; операции с колонками НЕ
-// сохраняем (иначе перезатрём вид Сделок, doctype один — CRM Deal). ──
-async function onKanbanUpdate(data) {
+// перенос карточки = смена этапа воронки; операции с колонками не персистим
+async function onMove(data) {
   if (data?.item && data?.to) {
     try {
       await call('nacifrah.api.move_funnel_deal', {
@@ -337,12 +130,10 @@ async function onKanbanUpdate(data) {
       toast.error(e?.messages?.[0] || __('Не удалось переместить'))
       deals.value?.reload?.()
     }
-    return
   }
-  // реордер/правки колонок на funnel-борде не персистим
 }
 
-// ── создание сделки на этапе (попап) ──
+// создание сделки на этапе (попап)
 const showCreate = ref(false)
 const createStage = ref('')
 const createTitle = ref('')
