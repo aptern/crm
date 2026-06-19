@@ -95,6 +95,30 @@
                   <dd class="text-ink-gray-8">{{ row.value || '—' }}</dd>
                 </div>
               </dl>
+              <!-- I32: телефон сотрудника (менеджер может задать/изменить) -->
+              <div class="mt-3 flex items-start gap-2 text-sm">
+                <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">
+                  {{ __('Телефон') }}
+                </div>
+                <div class="flex-1">
+                  <template v-if="canManage && card.user_id">
+                    <PhoneInput
+                      :value="card.cell_number"
+                      @change="(v) => (phoneEdit = v)"
+                    />
+                    <Button
+                      class="mt-1.5"
+                      size="sm"
+                      :label="__('Сохранить телефон')"
+                      :loading="savingPhone"
+                      @click="saveEmployeePhone"
+                    />
+                  </template>
+                  <span v-else class="text-ink-gray-8">{{
+                    formatPhoneDisplay(card.cell_number) || '—'
+                  }}</span>
+                </div>
+              </div>
             </div>
             <div
               v-if="canManage && card.status === 'Active' && card.user_id"
@@ -274,13 +298,35 @@ function statusClass(s) {
 const card = ref(null)
 function openCard(e) {
   card.value = e
+  phoneEdit.value = null
+}
+
+// I32: правка телефона существующего сотрудника
+const phoneEdit = ref(null)
+const savingPhone = ref(false)
+async function saveEmployeePhone() {
+  if (!card.value?.user_id) return
+  savingPhone.value = true
+  try {
+    const val = phoneEdit.value ?? card.value.cell_number ?? ''
+    await call('nacifrah.hr.set_employee_phone', {
+      user: card.value.user_id,
+      cell_number: val,
+    })
+    card.value.cell_number = val
+    await loadEmployees()
+    toast.success(__('Телефон сохранён'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить телефон'))
+  } finally {
+    savingPhone.value = false
+  }
 }
 const cardRows = computed(() => {
   const e = card.value || {}
   return [
     { label: __('Должность'), value: e.designation },
     { label: __('Отдел'), value: e.department },
-    { label: __('Телефон'), value: formatPhoneDisplay(e.cell_number) },
     { label: __('Логин'), value: e.user_id },
     { label: __('Статус'), value: statusLabel(e.status) },
   ]
