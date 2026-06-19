@@ -485,9 +485,8 @@ const _allCustomNav = [
   { id: 'KnowledgeBase', label: 'База знаний', to: { name: 'KnowledgeBase' }, icon: 'book-open' },
   // A1.2: блок «Воронки» — единый перетаскиваемый элемент среди пунктов меню
   { id: 'Funnels', isFunnelsBlock: true },
-  { id: 'Employees', label: 'Сотрудники', to: { name: 'Employees' }, icon: 'users', managerOnly: true },
-  { id: 'Departments', label: 'Отделы', to: { name: 'Departments' }, icon: 'git-merge', managerOnly: true },
-  { id: 'Permissions', label: 'Права доступа', to: { name: 'Permissions' }, icon: 'shield', managerOnly: true },
+  // K3: единый модуль «Команда» вместо отдельных Сотрудники/Отделы/Права
+  { id: 'Team', label: 'Команда', to: { name: 'Team' }, icon: 'users', managerOnly: true },
 ]
 // A1.3: порядок воронок внутри блока (Лиды/Сделки + будущие кастомные); «Параметры» закреплены внизу
 const FUNNELS_ORDER_KEY = 'nacifrah_funnels_order'

@@ -46,6 +46,13 @@ const routes = [
     component: () => import('@/pages/Departments.vue'),
   },
   {
+    // K3: единый модуль «Команда» (вкладки: оргструктура/должности/сотрудники/права)
+    alias: '/team',
+    path: '/team/:tab?',
+    name: 'Team',
+    component: () => import('@/pages/Team.vue'),
+  },
+  {
     path: '/permissions',
     name: 'Permissions',
     component: () => import('@/pages/Permissions.vue'),

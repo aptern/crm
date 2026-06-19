@@ -1,5 +1,5 @@
 <template>
-  <LayoutHeader>
+  <LayoutHeader v-if="!embedded">
     <template #left-header>
       <div class="text-lg font-semibold text-ink-gray-8">{{ __('Сотрудники') }}</div>
     </template>
@@ -28,6 +28,13 @@
         :options="departmentFilterOptions"
         v-model="filterDept"
         class="w-52"
+      />
+      <!-- K3: поиск по всем полям карточки сотрудника -->
+      <FormControl
+        type="text"
+        :placeholder="__('Поиск: имя, должность, телефон, логин…')"
+        v-model="searchQuery"
+        class="w-72"
       />
       <span class="text-xs text-ink-gray-4">{{ (employeeList || []).length }} {{ __('чел.') }}</span>
     </div>
@@ -107,6 +114,39 @@
               <Button variant="ghost" icon="x" @click="card = null" />
             </div>
             <div class="flex-1 overflow-y-auto px-6 py-5">
+              <!-- K3: должность — редактируемая (админ меняет в выпадающем списке) -->
+              <div class="mb-3 flex items-start gap-2 text-sm">
+                <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">
+                  {{ __('Должность') }}
+                </div>
+                <div class="flex-1">
+                  <template v-if="canManage">
+                    <FormControl
+                      type="select"
+                      :options="designationSelectOptions"
+                      :modelValue="cardDesignation"
+                      @update:modelValue="onCardDesignationChange"
+                    />
+                    <div v-if="cardDesigNewMode" class="mt-1.5 flex gap-2">
+                      <FormControl
+                        type="text"
+                        class="flex-1"
+                        :placeholder="__('Название новой должности')"
+                        v-model="cardDesigNew"
+                        @keyup.enter="saveCardDesignation"
+                      />
+                      <Button
+                        size="sm"
+                        :label="__('OK')"
+                        @click="saveCardDesignation"
+                      />
+                    </div>
+                  </template>
+                  <span v-else class="text-ink-gray-8">{{
+                    card.designation || '—'
+                  }}</span>
+                </div>
+              </div>
               <dl class="grid grid-cols-1 gap-3">
                 <div v-for="row in cardRows" :key="row.label" class="flex gap-2 text-sm">
                   <dt class="w-32 shrink-0 text-ink-gray-5">{{ row.label }}</dt>
@@ -221,11 +261,19 @@
             :options="roleOptions"
             v-model="form.role"
           />
+          <!-- K4: должность с инлайн-созданием новой -->
           <FormControl
             type="select"
             :label="__('Должность')"
-            :options="designationOptions"
+            :options="designationSelectOptions"
             v-model="form.designation"
+          />
+          <FormControl
+            v-if="form.designation === '__new__'"
+            type="text"
+            :placeholder="__('Название новой должности')"
+            v-model="form.designationNew"
+            @keydown.enter.prevent
           />
           <FormControl
             type="select"
@@ -275,6 +323,10 @@ import { usersStore } from '@/stores/users'
 
 const { isManager } = usersStore()
 
+// K3: встраивание во вкладку «Команда» (прячем хедер; найм — кнопкой в хедере Team)
+defineProps({ embedded: { type: Boolean, default: false } })
+defineExpose({ openHire: () => openHire() })
+
 // D2: право найма/увольнения по политике (а не просто роль менеджера)
 const canManage = ref(false)
 
@@ -282,18 +334,20 @@ const canManage = ref(false)
 const employeeList = ref([])
 const filterStatus = ref('Active')
 const filterDept = ref('')
+const searchQuery = ref('')
 
 async function loadEmployees() {
   try {
     employeeList.value = await call('nacifrah.hr.list_employees', {
       status: filterStatus.value,
       department: filterDept.value || null,
+      search: searchQuery.value || null,
     })
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить сотрудников'))
   }
 }
-watch([filterStatus, filterDept], loadEmployees)
+watch([filterStatus, filterDept, searchQuery], loadEmployees)
 onMounted(async () => {
   loadEmployees()
   try {
@@ -323,9 +377,48 @@ function statusClass(s) {
 
 // ── D1 карточка сотрудника ───────────────────────────────────────────
 const card = ref(null)
+// K3: инлайн-смена должности прямо в карточке сотрудника
+const cardDesignation = ref('')
+const cardDesigNewMode = ref(false)
+const cardDesigNew = ref('')
 function openCard(e) {
   card.value = e
   phoneEdit.value = null
+  cardDesignation.value = e.designation || ''
+  cardDesigNewMode.value = false
+  cardDesigNew.value = ''
+}
+async function onCardDesignationChange(val) {
+  cardDesignation.value = val
+  if (val === '__new__') {
+    cardDesigNewMode.value = true
+    return
+  }
+  cardDesigNewMode.value = false
+  await applyCardDesignation(val || null)
+}
+async function saveCardDesignation() {
+  const name = (cardDesigNew.value || '').trim()
+  if (!name) return
+  await applyCardDesignation(name)
+  cardDesigNewMode.value = false
+  cardDesigNew.value = ''
+  cardDesignation.value = name
+}
+async function applyCardDesignation(val) {
+  if (!card.value?.name) return
+  try {
+    await call('nacifrah.hr.set_employee_designation', {
+      employee: card.value.name,
+      designation: val,
+    })
+    if (card.value) card.value.designation = val
+    designations.reload()
+    await loadEmployees()
+    toast.success(__('Должность обновлена'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось'))
+  }
 }
 
 // I32: правка телефона существующего сотрудника
@@ -353,7 +446,6 @@ async function saveEmployeePhone() {
 const cardRows = computed(() => {
   const e = card.value || {}
   return [
-    { label: __('Должность'), value: e.designation },
     { label: __('Отдел'), value: e.department },
     { label: __('Логин'), value: e.user_id },
     { label: __('Статус'), value: statusLabel(e.status) },
@@ -453,6 +545,7 @@ const form = reactive({
   password: '',
   role: 'Specialist',
   designation: '',
+  designationNew: '', // K4: имя новой должности (когда выбрано «завести новую»)
   department: '',
   cell_number: '', // I32: телефон сотрудника
 })
@@ -478,6 +571,20 @@ const designationOptions = computed(() => [
   { label: '—', value: '' },
   ...((designations.data || []).map((d) => ({ label: d.name, value: d.name }))),
 ])
+// K4: тот же список + пункт «завести новую» в самом низу
+const designationSelectOptions = computed(() => [
+  ...designationOptions.value,
+  { label: __('＋ Завести новую должность…'), value: '__new__' },
+])
+// разрешить выбранную должность: если «новая» — создать и вернуть её имя
+async function ensureDesignation(sel, typed) {
+  if (sel !== '__new__') return sel || null
+  const name = (typed || '').trim()
+  if (!name) return null
+  await call('nacifrah.hr.create_designation', { designation_name: name })
+  designations.reload()
+  return name
+}
 const departmentOptions = computed(() => [
   { label: '—', value: '' },
   ...((departments.data || []).map((d) => ({ label: d.name, value: d.name }))),
@@ -495,6 +602,7 @@ function openHire() {
     password: '',
     role: 'Specialist',
     designation: '',
+    designationNew: '',
     department: '',
   })
   showHire.value = true
@@ -508,11 +616,12 @@ async function doHire() {
   }
   hiring.value = true
   try {
+    const designation = await ensureDesignation(form.designation, form.designationNew)
     await call('nacifrah.hr.hire_employee', {
       full_name: form.full_name,
       email: form.email,
       role: form.role,
-      designation: form.designation || null,
+      designation: designation,
       department: form.department || null,
       password: form.password || null,
       cell_number: form.cell_number || null,

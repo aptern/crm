@@ -6,7 +6,7 @@
   с чёрточками и зависимостями, с отображением сотрудников; оформи с фото».
 -->
 <template>
-  <LayoutHeader>
+  <LayoutHeader v-if="!embedded">
     <template #left-header>
       <div class="text-lg font-semibold text-ink-gray-8">
         {{ __('Оргструктура') }}
@@ -168,6 +168,11 @@ import {
 } from 'frappe-ui'
 import { reactive, ref, computed, onMounted, provide } from 'vue'
 import { usersStore } from '@/stores/users'
+
+// K3: при встраивании во вкладку «Команда» прячем собственный LayoutHeader
+defineProps({ embedded: { type: Boolean, default: false } })
+// родитель (Team) вызывает создание отдела через кнопку в своём хедере
+defineExpose({ openCreate: (p) => openCreate(p) })
 
 const { isManager, users: usersList } = usersStore()
 

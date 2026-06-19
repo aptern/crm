@@ -1,5 +1,5 @@
 <template>
-  <LayoutHeader>
+  <LayoutHeader v-if="!embedded">
     <template #left-header>
       <div class="text-lg font-semibold text-ink-gray-8">{{ __('Права доступа') }}</div>
     </template>
@@ -54,6 +54,9 @@
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import { createResource, call, toast } from 'frappe-ui'
 import { ref } from 'vue'
+
+// K3.1: встраивание во вкладку «Команда»
+defineProps({ embedded: { type: Boolean, default: false } })
 
 const data = ref(null)
 const saving = ref(false)
