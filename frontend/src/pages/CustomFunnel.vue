@@ -1,18 +1,29 @@
-<!-- Кастомная воронка — тонкая обёртка над единым шаблоном доски <SalesBoard> (I34).
-     Отличия воронки: колонки по этапам (nacifrah_funnel_stage), перенос = смена этапа,
-     создание сделки на этапе. Весь остальной вид/функционал — из общего шаблона. -->
+<!-- Кастомная воронка — ПОЛНАЯ копия доски «Сделки» (Deals.vue) на едином <SalesBoard>.
+     Отличия ТОЛЬКО воронки: фильтр по nacifrah_funnel, колонки по этапам
+     (nacifrah_funnel_stage), перенос карточки = смена этапа, создание сделки привязывается
+     к воронке/этапу. Орг-поле в создании = Link на CRM Organization (выпадающий список
+     клиентов) — приходит из стандартного DealModal, как у «Сделок» (L1-FIX). -->
 <template>
   <LayoutHeader>
     <template #left-header>
       <div class="flex items-center gap-2">
-        <FeatherIcon
-          :name="funnelIcon || 'filter'"
-          class="h-5 w-5 text-ink-gray-6"
-        />
+        <FeatherIcon :name="funnelIcon || 'filter'" class="h-5 w-5 text-ink-gray-6" />
         <div class="text-lg font-semibold text-ink-gray-8">
           {{ funnelName || funnel }}
         </div>
       </div>
+    </template>
+    <template #right-header>
+      <CustomActions
+        v-if="board?.listView?.customListActions"
+        :actions="board.listView.customListActions"
+      />
+      <Button
+        variant="solid"
+        :label="__('Создать')"
+        iconLeft="plus"
+        @click="onCreateClick"
+      />
     </template>
   </LayoutHeader>
 
@@ -23,8 +34,8 @@
     doctype="CRM Deal"
     :filters="{ nacifrah_funnel: funnel }"
     :boardFilters="{ nacifrah_funnel: funnel }"
-    :kanbanFields="kanbanFields"
-    :allowedViews="['kanban']"
+    :kanbanFields="dealKanbanFields"
+    :allowedViews="['list', 'group_by', 'kanban']"
     defaultColumnField="nacifrah_funnel_stage"
     :kanbanColumns="funnelKanbanColumns"
     :noViewPersist="true"
@@ -37,68 +48,53 @@
     "
     :onNewClick="onNewClick"
     :moveHandler="onMove"
+    :cardActions="actions"
+    :listComponent="DealsListView"
+    emptyName="Deals"
+    :emptyIcon="DealsIcon"
   />
 
-  <Dialog v-model="showCreate" :options="{ title: __('Новая сделка') }">
-    <template #body-content>
-      <div class="flex flex-col gap-3">
-        <div class="text-sm text-ink-gray-6">
-          {{ __('Этап') }}: <span class="font-medium">{{ createStage }}</span>
-        </div>
-        <!-- L1: воронка текущих клиентов (Допродажа) — выбор существующего клиента -->
-        <div v-if="existingClients" class="flex flex-col gap-1.5">
-          <span class="text-xs text-ink-gray-5">{{ __('Клиент') }}</span>
-          <Link
-            class="form-control"
-            :value="createOrg"
-            doctype="CRM Organization"
-            :placeholder="__('Выберите клиента из списка')"
-            @change="(v) => (createOrg = v)"
-          />
-        </div>
-        <FormControl
-          v-else
-          v-model="createTitle"
-          type="text"
-          :label="__('Название сделки')"
-          :placeholder="__('Например, организация или контакт')"
-          @keydown.enter="submitCreate"
-        />
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button :label="__('Отмена')" @click="showCreate = false" />
-        <Button
-          variant="solid"
-          :label="__('Создать')"
-          :loading="creating"
-          @click="submitCreate"
-        />
-      </div>
-    </template>
-  </Dialog>
+  <DealModal
+    v-if="showDealModal"
+    v-model="showDealModal"
+    :defaults="defaults"
+    :openAfterCreate="false"
+    @afterCreate="deals?.reload?.()"
+  />
 </template>
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import CustomActions from '@/components/CustomActions.vue'
 import SalesBoard from '@/components/SalesBoard.vue'
-import Link from '@/components/Controls/Link.vue'
-import { Button, Dialog, FeatherIcon, FormControl, call, toast } from 'frappe-ui'
-import { ref, computed, watch, onMounted } from 'vue'
+import DealsListView from '@/components/ListViews/DealsListView.vue'
+import DealModal from '@/components/Modals/DealModal.vue'
+import DealsIcon from '@/components/Icons/DealsIcon.vue'
+import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+import NoteIcon from '@/components/Icons/NoteIcon.vue'
+import TaskIcon from '@/components/Icons/TaskIcon.vue'
+import { globalStore } from '@/stores/global'
+import { callEnabled } from '@/composables/telephony'
+import { useDoctypeModal } from '@/composables/doctypeModal'
+import { Button, FeatherIcon, call, toast } from 'frappe-ui'
+import { ref, reactive, computed, watch, onMounted, h } from 'vue'
 import { useRoute } from 'vue-router'
+
+const { makeCall } = globalStore()
+const { showModal } = useDoctypeModal()
 
 const route = useRoute()
 const funnel = ref(route.params.name)
 const funnelName = ref('')
 const funnelIcon = ref('')
 const funnelStages = ref([])
-// L1: воронка «текущих клиентов» (Допродажа) → организация выбирается из списка
-const existingClients = ref(false)
 
 const board = ref(null)
 const viewControls = ref(null)
 const deals = ref({})
 
-const kanbanFields = JSON.stringify([
+// I13: поля карточки сделки — сумма, телефон, исполнитель + дата создания (как у «Сделок»)
+const dealKanbanFields = JSON.stringify([
   'annual_revenue',
   'mobile_no',
   '_assign',
@@ -117,7 +113,6 @@ async function loadFunnelMeta() {
     funnelName.value = m?.funnel_name || funnel.value
     funnelIcon.value = m?.icon || 'filter'
     funnelStages.value = m?.stages || []
-    existingClients.value = !!m?.existing_clients
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить воронку'))
   }
@@ -137,10 +132,7 @@ watch(
 async function onMove(data) {
   if (data?.item && data?.to) {
     try {
-      await call('nacifrah.api.move_funnel_deal', {
-        deal: data.item,
-        stage: data.to,
-      })
+      await call('nacifrah.api.move_funnel_deal', { deal: data.item, stage: data.to })
       deals.value?.reload?.()
     } catch (e) {
       toast.error(e?.messages?.[0] || __('Не удалось переместить'))
@@ -149,39 +141,62 @@ async function onMove(data) {
   }
 }
 
-// создание сделки на этапе (попап)
-const showCreate = ref(false)
-const createStage = ref('')
-const createTitle = ref('')
-const createOrg = ref('')
-const creating = ref(false)
-function onNewClick(column) {
-  createStage.value = column?.column?.name || ''
-  createTitle.value = ''
-  createOrg.value = ''
-  showCreate.value = true
+// ── создание сделки через полный DealModal (как у «Сделок»), с привязкой к воронке ──
+const showDealModal = ref(false)
+const defaults = reactive({})
+
+function openCreate(stageName) {
+  // очистить и проставить воронку + этап
+  Object.keys(defaults).forEach((k) => delete defaults[k])
+  defaults.nacifrah_funnel = funnel.value
+  if (stageName) defaults.nacifrah_funnel_stage = stageName
+  showDealModal.value = true
 }
-async function submitCreate() {
-  const payload = { funnel: funnel.value, stage: createStage.value }
-  if (existingClients.value) {
-    if (!createOrg.value) return
-    payload.organization = createOrg.value
-  } else {
-    const title = (createTitle.value || '').trim()
-    if (!title) return
-    payload.title = title
-  }
-  creating.value = true
-  try {
-    await call('nacifrah.api.create_deal', payload)
-    showCreate.value = false
-    createTitle.value = ''
-    createOrg.value = ''
-    deals.value?.reload?.()
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось создать сделку'))
-  } finally {
-    creating.value = false
-  }
+// «+» на колонке канбана → этап = колонка
+function onNewClick(column) {
+  openCreate(column?.column?.name || funnelStages.value?.[0]?.name || '')
+}
+// кнопка «Создать» в шапке → первый этап воронки
+function onCreateClick() {
+  openCreate(funnelStages.value?.[0]?.name || '')
+}
+
+// карточные действия (звонок/заметка/задача) — идентично «Сделкам»
+function actions(itemName, getRow) {
+  let mobile_no = getRow(itemName, 'mobile_no')?.label || ''
+  let acts = [
+    {
+      icon: h(PhoneIcon, { class: 'h-4 w-4' }),
+      label: __('Make a Call'),
+      onClick: () => makeCall(mobile_no),
+      condition: () => mobile_no && callEnabled.value,
+    },
+    {
+      icon: h(NoteIcon, { class: 'h-4 w-4' }),
+      label: __('New Note'),
+      onClick: () => showNote(itemName),
+    },
+    {
+      icon: h(TaskIcon, { class: 'h-4 w-4' }),
+      label: __('New Task'),
+      onClick: () => showTask(itemName),
+    },
+  ]
+  return acts.filter((a) => (a.condition ? a.condition() : true))
+}
+function showNote(name) {
+  showModal({
+    doctype: 'FCRM Note',
+    title: 'Note',
+    defaults: { reference_doctype: 'CRM Deal', reference_docname: name },
+  })
+}
+function showTask(name) {
+  showModal({
+    doctype: 'CRM Task',
+    title: 'Task',
+    defaults: { reference_doctype: 'CRM Deal', reference_docname: name },
+    popup: true, // I22: создание задачи — центральный попап
+  })
 }
 </script>
