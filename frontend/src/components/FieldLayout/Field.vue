@@ -337,6 +337,8 @@ import EditIcon from '@/components/Icons/EditIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import TableMultiselectInput from '@/components/Controls/TableMultiselectInput.vue'
+// M6(д): приоритеты задачи — единый источник (общий с бордом задач)
+import { TASK_PRIORITIES } from '@/utils/taskPriority'
 import Link from '@/components/Controls/Link.vue'
 import Grid from '@/components/Controls/Grid.vue'
 import { createDocument } from '@/composables/document'
@@ -369,13 +371,11 @@ const doctype = inject('doctype')
 const preview = inject('preview')
 const isGridRow = inject('isGridRow')
 
-// B9: 4 цветные кнопки приоритета задачи (значения Low/Medium/High/Urgent, рус. подписи + цвета).
-const taskPriorityButtons = [
-  { value: 'Low', label: 'Не срочно', active: { backgroundColor: '#94a3b8', color: '#fff' }, idle: { backgroundColor: '#f1f5f9', color: '#64748b' } },
-  { value: 'Medium', label: 'Нормально', active: { backgroundColor: '#16a34a', color: '#fff' }, idle: { backgroundColor: '#dcfce7', color: '#15803d' } },
-  { value: 'High', label: 'Срочно', active: { backgroundColor: '#f87171', color: '#fff' }, idle: { backgroundColor: '#fef2f2', color: '#ef4444' } },
-  { value: 'Urgent', label: 'Крайне срочно', active: { backgroundColor: '#dc2626', color: '#fff' }, idle: { backgroundColor: '#fee2e2', color: '#b91c1c' } },
-]
+// B9/M6(д): 4 цветные кнопки приоритета задачи — из ЕДИНОГО источника (общий с бордом).
+// Порядок кнопок: по возрастанию важности (Низкий → Критичный).
+const taskPriorityButtons = [...TASK_PRIORITIES]
+  .reverse()
+  .map((p) => ({ value: p.value, label: p.label, active: p.active, idle: p.chip }))
 
 // Guard getMeta — skip when doctype is empty (inline/standalone mode)
 let getFormattedPercent, getFormattedFloat, getFormattedCurrency

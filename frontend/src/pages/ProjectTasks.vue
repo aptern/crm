@@ -566,6 +566,8 @@ import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
 import { storeToRefs } from 'pinia'
 import { formatDate, timeAgo } from '@/utils'
+// M6(д): приоритеты задачи — единый источник (общий с попапом создания)
+import { PRIORITY_LABELS, PRIORITY_CHIP, PRIORITY_ORDER } from '@/utils/taskPriority'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -784,22 +786,8 @@ async function updateDue(task, val) {
 }
 
 // Приоритет (I18, переделка B2): 4 уровня. Значения по-английски (Low/Medium/High/Urgent
-// — совместимость с Frappe/SLA), русские подписи — на отображении. Срочность теперь
-// отражает ДЕДЛАЙН (левая полоса), а это — именно ПРИОРИТЕТ важности.
-const PRIORITY_LABELS = {
-  Urgent: 'Критичный',
-  High: 'Высокий',
-  Medium: 'Средний',
-  Low: 'Низкий',
-}
-// Цвета чипа приоритета: критичный — красный, высокий — бледно-красный, средний — зелёный, низкий — серый.
-const PRIORITY_CHIP = {
-  Urgent: { backgroundColor: '#fee2e2', color: '#b91c1c' },
-  High: { backgroundColor: '#fef2f2', color: '#ef4444' },
-  Medium: { backgroundColor: '#dcfce7', color: '#15803d' },
-  Low: { backgroundColor: '#f1f5f9', color: '#64748b' },
-}
-const PRIORITY_ORDER = ['Urgent', 'High', 'Medium', 'Low']
+// — совместимость с Frappe/SLA), русские подписи + цвета — из единого источника
+// @/utils/taskPriority (M6д: тот же источник, что у попапа создания).
 function priorityLabel(p) {
   return PRIORITY_LABELS[p] || p || __('Низкий')
 }
