@@ -179,15 +179,25 @@
               </div>
             </div>
             <div
-              v-if="canManage && card.status === 'Active' && card.user_id"
-              class="shrink-0 border-t border-outline-gray-1 px-6 py-4"
+              v-if="canManage"
+              class="flex shrink-0 items-center gap-2 border-t border-outline-gray-1 px-6 py-4"
             >
               <Button
+                v-if="card.status === 'Active' && card.user_id"
                 variant="subtle"
                 theme="red"
                 :label="__('Уволить')"
                 iconLeft="user-x"
                 @click="openFire"
+              />
+              <!-- K8: полное удаление — ТОЛЬКО админ -->
+              <Button
+                v-if="isAdmin()"
+                variant="ghost"
+                theme="red"
+                :label="__('Удалить')"
+                iconLeft="trash-2"
+                @click="doDelete"
               />
             </div>
           </div>
@@ -321,7 +331,7 @@ import {
 import { reactive, ref, computed, watch, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
 
-const { isManager } = usersStore()
+const { isManager, isAdmin } = usersStore()
 
 // K3: встраивание во вкладку «Команда» (прячем хедер; найм — кнопкой в хедере Team)
 defineProps({ embedded: { type: Boolean, default: false } })
@@ -503,6 +513,28 @@ function openFire() {
   fireReassign.deal = ''
   fireReassign.task = ''
   showFire.value = true
+}
+
+// K8: полное удаление сотрудника (карточка + логин) — только админ
+async function doDelete() {
+  if (!card.value?.name) return
+  if (
+    !window.confirm(
+      __('Удалить сотрудника «{0}» полностью? Удалятся карточка и логин. Необратимо.').replace(
+        '{0}',
+        card.value.employee_name,
+      ),
+    )
+  )
+    return
+  try {
+    await call('nacifrah.hr.delete_employee', { employee: card.value.name })
+    card.value = null
+    await loadEmployees()
+    toast.success(__('Сотрудник удалён'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось удалить'))
+  }
 }
 async function doFire() {
   if (!card.value?.user_id) return
