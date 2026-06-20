@@ -117,6 +117,7 @@
 
 <script setup>
 import { ref, computed, watch, h, nextTick } from 'vue'
+import { napi } from '@/utils/api'
 import { Avatar, Button, FeatherIcon, FileUploader, createResource, call, toast } from 'frappe-ui'
 import { timeAgo } from '@/utils'
 import { usersStore } from '@/stores/users'
@@ -168,7 +169,7 @@ const FeedItem = (p) => {
 
 const data = ref(null)
 const overview = createResource({
-  url: 'nacifrah.tasks_api.get_project_overview',
+  url: napi('tasks_api.get_project_overview'),
   makeParams: () => ({ project: props.project }),
   onSuccess(d) {
     data.value = d

@@ -146,6 +146,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import OrgNode from '@/components/OrgNode.vue'
 import PhotoCropDialog from '@/components/PhotoCropDialog.vue'
 import {
@@ -172,7 +173,7 @@ const { isManager, users: usersList } = usersStore()
 const chart = ref(null)
 async function load() {
   try {
-    chart.value = await call('nacifrah.hr.get_org_chart')
+    chart.value = await call(napi('hr.get_org_chart'))
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить оргструктуру'))
   }
@@ -240,7 +241,7 @@ async function doCreate() {
   }
   creating.value = true
   try {
-    await call('nacifrah.hr.create_department', {
+    await call(napi('hr.create_department'), {
       department_name: createForm.name.trim(),
       parent_department: createForm.parent || null,
       head: createForm.head || null,
@@ -277,9 +278,9 @@ function openSetCEO() {
 async function doUser() {
   try {
     if (userMode.value === 'ceo') {
-      await call('nacifrah.hr.set_company_ceo', { user: userPick.value || null })
+      await call(napi('hr.set_company_ceo'), { user: userPick.value || null })
     } else {
-      await call('nacifrah.hr.set_department_head', {
+      await call(napi('hr.set_department_head'), {
         department: userTargetDept.value,
         head: userPick.value || null,
       })
@@ -317,12 +318,12 @@ async function doEmp() {
   try {
     if (empMode.value === 'assign') {
       if (!empPick.value) return
-      await call('nacifrah.hr.set_employee_department', {
+      await call(napi('hr.set_employee_department'), {
         employee: empPick.value,
         department: empTargetDept.value,
       })
     } else {
-      await call('nacifrah.hr.set_employee_department', {
+      await call(napi('hr.set_employee_department'), {
         employee: empTarget.value.name,
         department: deptPick.value || null,
       })
@@ -335,7 +336,7 @@ async function doEmp() {
 }
 async function detachEmp(emp) {
   try {
-    await call('nacifrah.hr.set_employee_department', {
+    await call(napi('hr.set_employee_department'), {
       employee: emp.name,
       department: null,
     })
@@ -348,7 +349,7 @@ async function detachEmp(emp) {
 async function removeDept(node) {
   if (!window.confirm(__('Удалить отдел «{0}»?').replace('{0}', node.label))) return
   try {
-    await call('nacifrah.hr.delete_department', { department: node.name })
+    await call(napi('hr.delete_department'), { department: node.name })
     await load()
     toast.success(__('Отдел удалён'))
   } catch (e) {
@@ -363,7 +364,7 @@ async function clearAll() {
   )
     return
   try {
-    const r = await call('nacifrah.hr.clear_departments')
+    const r = await call(napi('hr.clear_departments'))
     await load()
     toast.success(__('Удалено отделов: {0}').replace('{0}', r?.count ?? 0))
   } catch (e) {
@@ -393,7 +394,7 @@ async function onCropped({ blob, name }) {
     const j = await res.json()
     const fileUrl = j?.message?.file_url
     if (!fileUrl) throw new Error('upload failed')
-    await call('nacifrah.hr.set_employee_photo', {
+    await call(napi('hr.set_employee_photo'), {
       employee: photoTarget.value.name,
       file_url: fileUrl,
     })

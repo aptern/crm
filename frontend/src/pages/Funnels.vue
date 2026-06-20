@@ -166,6 +166,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import {
   Button,
@@ -238,13 +239,13 @@ async function loadAll() {
   for (const n of NATIVE) {
     let stages = []
     try {
-      const r = await call('nacifrah.funnels.get_funnel_stages', { kind: n.kind })
+      const r = await call(napi('funnels.get_funnel_stages'), { kind: n.kind })
       stages = _mapNative(r.stages)
     } catch (e) {}
     items.push({ key: 'n:' + n.kind, type: 'native', kind: n.kind, title: n.title, icon: n.icon, stages, expanded: false })
   }
   try {
-    const cf = (await call('nacifrah.api.list_funnels_admin')) || []
+    const cf = (await call(napi('api.list_funnels_admin'))) || []
     for (const f of cf) {
       items.push({ key: 'c:' + f.name, type: 'custom', name: f.name, title: f.funnel_name, icon: f.icon || 'filter', protected: f.protected, existing_clients: f.existing_clients, stages: _mapCustom(f.stages), expanded: false })
     }
@@ -258,10 +259,10 @@ onMounted(loadAll)
 
 async function reloadOne(item) {
   if (item.type === 'native') {
-    const r = await call('nacifrah.funnels.get_funnel_stages', { kind: item.kind })
+    const r = await call(napi('funnels.get_funnel_stages'), { kind: item.kind })
     item.stages = _mapNative(r.stages)
   } else {
-    const cf = (await call('nacifrah.api.list_funnels_admin')) || []
+    const cf = (await call(napi('api.list_funnels_admin'))) || []
     const f = cf.find((x) => x.name === item.name)
     if (f) item.stages = _mapCustom(f.stages)
   }
@@ -276,7 +277,7 @@ function _customPayload(item) {
   }))
 }
 async function _saveCustom(item) {
-  await call('nacifrah.api.update_funnel', { funnel: item.name, stages: JSON.stringify(_customPayload(item)) })
+  await call(napi('api.update_funnel'), { funnel: item.name, stages: JSON.stringify(_customPayload(item)) })
 }
 async function run(fn) {
   busy.value = true
@@ -292,14 +293,14 @@ async function run(fn) {
 function setColor(item, st, color) {
   st.color = color
   run(async () => {
-    if (item.type === 'native') await call('nacifrah.funnels.set_funnel_stage_color', { kind: item.kind, stage_name: st._orig, color })
+    if (item.type === 'native') await call(napi('funnels.set_funnel_stage_color'), { kind: item.kind, stage_name: st._orig, color })
     else await _saveCustom(item)
   })
 }
 function setKind(item, st, kind) {
   st.kind = kind
   run(async () => {
-    if (item.type === 'native') await call('nacifrah.funnels.set_funnel_stage_kind', { kind: item.kind, stage_name: st._orig, stage_kind: kind })
+    if (item.type === 'native') await call(napi('funnels.set_funnel_stage_kind'), { kind: item.kind, stage_name: st._orig, stage_kind: kind })
     else await _saveCustom(item)
     await reloadOne(item)
   })
@@ -311,7 +312,7 @@ function renameStage(item, st, ev) {
     return
   }
   run(async () => {
-    if (item.type === 'native') await call('nacifrah.funnels.rename_funnel_stage', { kind: item.kind, old_name: st._orig, new_name: nn })
+    if (item.type === 'native') await call(napi('funnels.rename_funnel_stage'), { kind: item.kind, old_name: st._orig, new_name: nn })
     else {
       st.label = nn
       await _saveCustom(item)
@@ -321,14 +322,14 @@ function renameStage(item, st, ev) {
 }
 function reorder(item) {
   run(async () => {
-    if (item.type === 'native') await call('nacifrah.funnels.set_funnel_order', { kind: item.kind, order: JSON.stringify(item.stages.map((s) => s._orig)) })
+    if (item.type === 'native') await call(napi('funnels.set_funnel_order'), { kind: item.kind, order: JSON.stringify(item.stages.map((s) => s._orig)) })
     else await _saveCustom(item)
     await reloadOne(item)
   })
 }
 function delStage(item, st) {
   run(async () => {
-    if (item.type === 'native') await call('nacifrah.funnels.delete_funnel_stage', { kind: item.kind, stage_name: st._orig })
+    if (item.type === 'native') await call(napi('funnels.delete_funnel_stage'), { kind: item.kind, stage_name: st._orig })
     else {
       item.stages = item.stages.filter((s) => s !== st)
       await _saveCustom(item)
@@ -341,7 +342,7 @@ function addStage(item) {
   if (!name) return
   newStage[item.key] = ''
   run(async () => {
-    if (item.type === 'native') await call('nacifrah.funnels.add_funnel_stage', { kind: item.kind, stage_name: name })
+    if (item.type === 'native') await call(napi('funnels.add_funnel_stage'), { kind: item.kind, stage_name: name })
     else {
       item.stages.push({ label: name, color: 'gray', kind: 'normal', _orig: name })
       await _saveCustom(item)
@@ -353,7 +354,7 @@ function setIcon(item, icon) {
   if (item.type !== 'custom') return
   item.icon = icon
   run(async () => {
-    await call('nacifrah.api.update_funnel', { funnel: item.name, icon })
+    await call(napi('api.update_funnel'), { funnel: item.name, icon })
     send('funnels_changed') // live: иконка воронки в меню без refresh
   })
 }
@@ -376,7 +377,7 @@ async function doCreateFunnel() {
   }
   creating.value = true
   try {
-    await call('nacifrah.api.create_funnel', {
+    await call(napi('api.create_funnel'), {
       funnel_name: nm,
       icon: 'filter',
       stages: JSON.stringify([{ stage_name: 'Новый этап', color: 'blue', sequence: 1 }]),
@@ -397,7 +398,7 @@ async function doCreateFunnel() {
 async function deleteFunnel(item) {
   if (!window.confirm(__('Удалить воронку «{0}»? Сделки будут отвязаны.', [item.title]))) return
   try {
-    await call('nacifrah.api.delete_funnel', { funnel: item.name })
+    await call(napi('api.delete_funnel'), { funnel: item.name })
     await loadAll()
     send('funnels_changed') // live: воронка исчезает из бокового меню без refresh
     toast.success(__('Воронка удалена'))

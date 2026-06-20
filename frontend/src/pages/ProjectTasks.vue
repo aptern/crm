@@ -594,6 +594,7 @@
 
 <script setup>
 import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
+import { napi } from '@/utils/api'
 import CustomActions from '@/components/CustomActions.vue'
 import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import TaskStatusIcon from '@/components/Icons/TaskStatusIcon.vue'
@@ -717,7 +718,7 @@ const selectionKey = computed(
 const allStageColumns = ref([])
 async function loadStageColumns() {
   try {
-    allStageColumns.value = (await call('nacifrah.project_columns.get_stage_columns')) || []
+    allStageColumns.value = (await call(napi('project_columns.get_stage_columns'))) || []
   } catch (e) {
     allStageColumns.value = []
   }
@@ -756,7 +757,7 @@ async function saveStage() {
   const scope = stageForm.value.scope === 'project' && singleProject.value ? 'project' : 'all'
   stageSaving.value = true
   try {
-    await call('nacifrah.project_columns.add_project_stage', {
+    await call(napi('project_columns.add_project_stage'), {
       project: singleProject.value || '',
       label,
       color: stageForm.value.color,
@@ -912,7 +913,7 @@ async function saveRename() {
   if (!renameTarget.value) return
   renameSaving.value = true
   try {
-    await call('nacifrah.api.rename_project', {
+    await call(napi('api.rename_project'), {
       deal: renameTarget.value.name,
       name: renameVal.value || '',
     })
@@ -939,7 +940,7 @@ async function saveCreateProject() {
   if (!name) return
   createSaving.value = true
   try {
-    await call('nacifrah.api.create_project', { name })
+    await call(napi('api.create_project'), { name })
     createDialog.value = false
     await projects.reload()
     toast.success(__('Проект создан'))
@@ -958,7 +959,7 @@ async function deleteProject(p) {
   )
     return
   try {
-    await call('nacifrah.api.delete_project', { project: p.name })
+    await call(napi('api.delete_project'), { project: p.name })
     if (selected.value.includes(p.name)) selectAll()
     await projects.reload()
     toast.success(__('Проект удалён'))
@@ -1087,7 +1088,7 @@ function parseRows(rows, columns = []) {
 const cardMeta = ref({})
 const taskNames = computed(() => (rows.value || []).map((r) => r.name).filter(Boolean))
 const cardMetaResource = createResource({
-  url: 'nacifrah.tasks_api.get_task_card_meta',
+  url: napi('tasks_api.get_task_card_meta'),
   makeParams: () => ({ tasks: JSON.stringify(taskNames.value) }),
   onSuccess(data) {
     cardMeta.value = data || {}
@@ -1112,7 +1113,7 @@ function checklistItems(name) {
 }
 async function loadChecklist(name) {
   try {
-    const data = await call('nacifrah.tasks_api.get_task_checklist', { task: name })
+    const data = await call(napi('tasks_api.get_task_checklist'), { task: name })
     checklistData.value = { ...checklistData.value, [String(name)]: data || [] }
   } catch (e) {
     checklistData.value = { ...checklistData.value, [String(name)]: [] }
@@ -1133,7 +1134,7 @@ async function toggleChecklistItem(name, it) {
   const next = it.is_done ? 0 : 1
   it.is_done = next // оптимистично
   try {
-    await call('nacifrah.tasks_api.toggle_checklist_item', {
+    await call(napi('tasks_api.toggle_checklist_item'), {
       item_name: it.name,
       is_done: next,
     })
@@ -1185,7 +1186,7 @@ async function onKanbanUpdate(data) {
   if (groupBy.value === 'deadline') {
     if (data?.item && data?.to) {
       try {
-        await call('nacifrah.tasks_api.set_task_due_for_bucket', {
+        await call(napi('tasks_api.set_task_due_for_bucket'), {
           task: data.item,
           bucket: data.to,
         })
@@ -1324,7 +1325,7 @@ async function loadRecur() {
   try {
     const proj = selected.value.length === 1 ? selected.value[0] : null
     recurList.value =
-      (await call('nacifrah.automation.list_recurring_tasks', proj ? { project: proj } : {})) || []
+      (await call(napi('automation.list_recurring_tasks'), proj ? { project: proj } : {})) || []
   } catch (e) {
     recurList.value = []
   }
@@ -1351,7 +1352,7 @@ async function createRecur() {
   recurSaving.value = true
   try {
     const proj = selected.value.length === 1 ? selected.value[0] : null
-    await call('nacifrah.automation.create_recurring_task', {
+    await call(napi('automation.create_recurring_task'), {
       task_title: recurForm.value.task_title.trim(),
       frequency: recurForm.value.frequency,
       project: proj || '',
@@ -1371,7 +1372,7 @@ async function createRecur() {
 }
 async function deleteRecur(name) {
   try {
-    await call('nacifrah.automation.delete_recurring_task', { name })
+    await call(napi('automation.delete_recurring_task'), { name })
     await loadRecur()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось удалить'))

@@ -65,6 +65,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import CustomActions from '@/components/CustomActions.vue'
 import { DEFAULT_CARD_KANBAN_FIELDS } from '@/utils/cardFields'
 import SalesBoard from '@/components/SalesBoard.vue'
@@ -106,7 +107,7 @@ const funnelKanbanColumns = computed(() => {
 
 async function loadFunnelMeta() {
   try {
-    const m = await call('nacifrah.api.get_funnel_meta', { funnel: funnel.value })
+    const m = await call(napi('api.get_funnel_meta'), { funnel: funnel.value })
     funnelName.value = m?.funnel_name || funnel.value
     funnelIcon.value = m?.icon || 'filter'
     funnelStages.value = m?.stages || []
@@ -135,7 +136,7 @@ watch(
 async function onMove(data) {
   if (data?.item && data?.to) {
     try {
-      await call('nacifrah.api.move_funnel_deal', { deal: data.item, stage: data.to })
+      await call(napi('api.move_funnel_deal'), { deal: data.item, stage: data.to })
       deals.value?.reload?.()
     } catch (e) {
       toast.error(e?.messages?.[0] || __('Не удалось переместить'))

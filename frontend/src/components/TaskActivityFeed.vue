@@ -163,6 +163,7 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted } from 'vue'
+import { napi } from '@/utils/api'
 import {
   Avatar,
   Button,
@@ -211,7 +212,7 @@ const users = computed(
 
 // B16: наблюдатели задачи
 const watchers = createResource({
-  url: 'nacifrah.tasks_api.get_task_watchers',
+  url: napi('tasks_api.get_task_watchers'),
   params: { task: props.task },
   auto: true,
 })
@@ -221,7 +222,7 @@ const addableUsers = computed(() => {
 })
 async function addWatcher(user) {
   try {
-    watchers.data = await call('nacifrah.tasks_api.add_task_watcher', {
+    watchers.data = await call(napi('tasks_api.add_task_watcher'), {
       task: props.task,
       user,
     })
@@ -231,7 +232,7 @@ async function addWatcher(user) {
 }
 async function removeWatcher(user) {
   try {
-    watchers.data = await call('nacifrah.tasks_api.remove_task_watcher', {
+    watchers.data = await call(napi('tasks_api.remove_task_watcher'), {
       task: props.task,
       user,
     })
@@ -250,7 +251,7 @@ const hasContent = computed(() => {
 })
 
 const activity = createResource({
-  url: 'nacifrah.tasks_api.get_task_activity',
+  url: napi('tasks_api.get_task_activity'),
   params: { task: props.task },
   auto: true,
   onSuccess() {

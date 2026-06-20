@@ -327,6 +327,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import PhoneInput from '@/components/Controls/PhoneInput.vue'
 import PhotoCropDialog from '@/components/PhotoCropDialog.vue'
 import { formatPhoneDisplay } from '@/utils/ruFormat'
@@ -362,7 +363,7 @@ const searchQuery = ref('')
 
 async function loadEmployees() {
   try {
-    employeeList.value = await call('nacifrah.hr.list_employees', {
+    employeeList.value = await call(napi('hr.list_employees'), {
       status: filterStatus.value,
       department: filterDept.value || null,
       search: searchQuery.value || null,
@@ -375,7 +376,7 @@ watch([filterStatus, filterDept, searchQuery], loadEmployees)
 onMounted(async () => {
   loadEmployees()
   try {
-    canManage.value = !!(await call('nacifrah.hr.can_manage_staff'))
+    canManage.value = !!(await call(napi('hr.can_manage_staff')))
   } catch (e) {
     canManage.value = false
   }
@@ -432,7 +433,7 @@ async function saveCardDesignation() {
 async function applyCardDesignation(val) {
   if (!card.value?.name) return
   try {
-    await call('nacifrah.hr.set_employee_designation', {
+    await call(napi('hr.set_employee_designation'), {
       employee: card.value.name,
       designation: val,
     })
@@ -453,7 +454,7 @@ async function saveEmployeePhone() {
   savingPhone.value = true
   try {
     const val = phoneEdit.value ?? card.value.cell_number ?? ''
-    await call('nacifrah.hr.set_employee_phone', {
+    await call(napi('hr.set_employee_phone'), {
       employee: card.value.name,
       user: card.value.user_id || null,
       cell_number: val,
@@ -498,7 +499,7 @@ async function onCropped({ blob, name }) {
     const j = await res.json()
     const fileUrl = j?.message?.file_url
     if (!fileUrl) throw new Error('upload failed')
-    await call('nacifrah.hr.set_employee_photo', {
+    await call(napi('hr.set_employee_photo'), {
       employee: photoTarget.value.name,
       file_url: fileUrl,
     })
@@ -542,7 +543,7 @@ async function doDelete() {
   )
     return
   try {
-    await call('nacifrah.hr.delete_employee', { employee: card.value.name })
+    await call(napi('hr.delete_employee'), { employee: card.value.name })
     card.value = null
     await loadEmployees()
     toast.success(__('Сотрудник удалён'))
@@ -559,7 +560,7 @@ async function doFire() {
     if (fireReassign.lead) reassign.lead = fireReassign.lead
     if (fireReassign.deal) reassign.deal = fireReassign.deal
     if (fireReassign.task) reassign.task = fireReassign.task
-    const res = await call('nacifrah.hr.fire_employee', {
+    const res = await call(napi('hr.fire_employee'), {
       user: card.value.user_id,
       reassign: JSON.stringify(reassign),
     })
@@ -623,7 +624,7 @@ const roleOptions = ref([
   { label: 'Администратор', value: 'Agency Admin' },
 ])
 createResource({
-  url: 'nacifrah.hr.get_agency_roles',
+  url: napi('hr.get_agency_roles'),
   auto: true,
   onSuccess(rows) {
     if (Array.isArray(rows) && rows.length)
@@ -644,7 +645,7 @@ async function ensureDesignation(sel, typed) {
   if (sel !== '__new__') return sel || null
   const name = (typed || '').trim()
   if (!name) return null
-  await call('nacifrah.hr.create_designation', { designation_name: name })
+  await call(napi('hr.create_designation'), { designation_name: name })
   designations.reload()
   return name
 }
@@ -699,7 +700,7 @@ async function doHire() {
   hiring.value = true
   try {
     const designation = await ensureDesignation(form.designation, form.designationNew)
-    await call('nacifrah.hr.hire_employee', {
+    await call(napi('hr.hire_employee'), {
       first_name: form.first_name,
       last_name: form.last_name,
       middle_name: form.middle_name || null,

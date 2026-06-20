@@ -121,6 +121,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import {
   Button,
   Dialog,
@@ -140,7 +141,7 @@ const current = ref(null)
 
 async function loadTree() {
   try {
-    const r = await call('nacifrah.kb_api.get_kb_tree')
+    const r = await call(napi('kb_api.get_kb_tree'))
     tree.sections = r?.sections || []
     // открыть первую страницу первого непустого раздела
     if (!current.value) {
@@ -164,7 +165,7 @@ const saving = ref(false)
 async function openPage(name) {
   editing.value = false
   try {
-    current.value = await call('nacifrah.kb_api.get_kb_page', { name })
+    current.value = await call(napi('kb_api.get_kb_page'), { name })
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось открыть страницу'))
   }
@@ -177,7 +178,7 @@ async function saveEdit() {
   if (!current.value) return
   saving.value = true
   try {
-    const r = await call('nacifrah.kb_api.save_kb_page', {
+    const r = await call(napi('kb_api.save_kb_page'), {
       name: current.value.name,
       content: editContent.value,
     })
@@ -210,7 +211,7 @@ async function doCreate() {
   }
   creating.value = true
   try {
-    const r = await call('nacifrah.kb_api.create_kb_page', {
+    const r = await call(napi('kb_api.create_kb_page'), {
       title: createForm.title.trim(),
       section: createForm.section.trim() || 'Без раздела',
     })

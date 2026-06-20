@@ -118,6 +118,7 @@ import {
   call,
   toast,
 } from 'frappe-ui'
+import { napi } from '@/utils/api'
 import { ref, computed, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
@@ -128,8 +129,8 @@ const designations = ref([])
 const employees = ref([])
 async function load() {
   try {
-    designations.value = await call('nacifrah.hr.list_designations')
-    employees.value = await call('nacifrah.hr.list_employees', { status: 'Active' })
+    designations.value = await call(napi('hr.list_designations'))
+    employees.value = await call(napi('hr.list_employees'), { status: 'Active' })
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось загрузить'))
   }
@@ -183,9 +184,9 @@ async function saveEdit() {
   saving.value = true
   try {
     if (editMode.value === 'create')
-      await call('nacifrah.hr.create_designation', { designation_name: name })
+      await call(napi('hr.create_designation'), { designation_name: name })
     else
-      await call('nacifrah.hr.rename_designation', {
+      await call(napi('hr.rename_designation'), {
         old_name: editOld.value,
         new_name: name,
       })
@@ -205,7 +206,7 @@ async function removeDesig(name) {
   )
     return
   try {
-    await call('nacifrah.hr.delete_designation', { designation: name })
+    await call(napi('hr.delete_designation'), { designation: name })
     await load()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось'))
@@ -223,7 +224,7 @@ function openAssign(name) {
 async function doAssign() {
   if (!assignEmp.value) return
   try {
-    await call('nacifrah.hr.set_employee_designation', {
+    await call(napi('hr.set_employee_designation'), {
       employee: assignEmp.value,
       designation: assignTarget.value,
     })
@@ -235,7 +236,7 @@ async function doAssign() {
 }
 async function detach(e) {
   try {
-    await call('nacifrah.hr.set_employee_designation', {
+    await call(napi('hr.set_employee_designation'), {
       employee: e.name,
       designation: '',
     })

@@ -285,6 +285,7 @@
 </template>
 <script setup>
 import RefreshIcon from '@/components/Icons/RefreshIcon.vue'
+import { napi } from '@/utils/api'
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import { isTouchScreenDevice, colors, parseColor } from '@/utils'
@@ -395,7 +396,7 @@ async function confirmMoveAndDelete() {
   if (!delMoveTo.value) return
   delBusy.value = true
   try {
-    await call('nacifrah.tasks_api.move_kanban_records', {
+    await call(napi('tasks_api.move_kanban_records'), {
       doctype: props.options?.doctype,
       column_field: kanban.value?.data?.column_field,
       from_value: delColumn.value.column.name,
@@ -447,7 +448,7 @@ async function loadStageSums() {
   }
   try {
     stageSums.value =
-      (await call('nacifrah.api.get_kanban_stage_sums', {
+      (await call(napi('api.get_kanban_stage_sums'), {
         doctype: props.options.doctype,
         column_field: cf,
         amount_field: amountField.value,

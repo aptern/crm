@@ -298,6 +298,7 @@
 
 <script setup>
 import BrushCleaningIcon from '~icons/lucide/brush-cleaning'
+import { napi } from '@/utils/api'
 import LucideLayoutDashboard from '~icons/lucide/layout-dashboard'
 import CRMLogo from '@/components/Icons/CRMLogo.vue'
 import InviteIcon from '@/components/Icons/InviteIcon.vue'
@@ -510,7 +511,7 @@ function _rebuildFunnels() {
 }
 async function _loadCustomFunnels() {
   try {
-    const list = (await call('nacifrah.api.list_funnels_admin')) || []
+    const list = (await call(napi('api.list_funnels_admin'))) || []
     customFunnelItems.value = list.map((f) => ({
       id: 'F::' + f.name,
       label: f.funnel_name,
@@ -526,7 +527,7 @@ async function onFunnelsReorder() {
   const order = orderedFunnels.value.map((it) => it.id)
   funnelsOrder.value = order
   try {
-    await call('nacifrah.menu.set_menu_order', {
+    await call(napi('menu.set_menu_order'), {
       order: JSON.stringify(order),
       scope: 'me',
       key: FUNNELS_ORDER_KEY,
@@ -568,7 +569,7 @@ async function onStdReorder() {
   const order = orderedStdViews.value.map((it) => it.label)
   stdOrder.value = order
   try {
-    await call('nacifrah.menu.set_menu_order', {
+    await call(napi('menu.set_menu_order'), {
       order: JSON.stringify(order),
       scope: 'me',
       key: STD_VIEWS_ORDER_KEY,
@@ -584,21 +585,21 @@ _rebuildStdViews()
 
 onMounted(async () => {
   try {
-    const r = await call('nacifrah.menu.get_menu_order')
+    const r = await call(napi('menu.get_menu_order'))
     menuOrder.value = r?.order || []
   } catch (e) {
     menuOrder.value = []
   }
   _rebuildNav()
   try {
-    const r2 = await call('nacifrah.menu.get_menu_order', { key: STD_VIEWS_ORDER_KEY })
+    const r2 = await call(napi('menu.get_menu_order'), { key: STD_VIEWS_ORDER_KEY })
     stdOrder.value = r2?.order || []
   } catch (e) {
     stdOrder.value = []
   }
   _rebuildStdViews()
   try {
-    const r3 = await call('nacifrah.menu.get_menu_order', { key: FUNNELS_ORDER_KEY })
+    const r3 = await call(napi('menu.get_menu_order'), { key: FUNNELS_ORDER_KEY })
     funnelsOrder.value = r3?.order || []
   } catch (e) {
     funnelsOrder.value = []
@@ -610,7 +611,7 @@ async function onNavReorder() {
   const order = orderedCustomNav.value.map((it) => it.id)
   menuOrder.value = order
   try {
-    await call('nacifrah.menu.set_menu_order', { order: JSON.stringify(order), scope: 'me' })
+    await call(napi('menu.set_menu_order'), { order: JSON.stringify(order), scope: 'me' })
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось сохранить порядок меню'))
   }
@@ -618,7 +619,7 @@ async function onNavReorder() {
 async function applyMenuToAll() {
   const order = orderedCustomNav.value.map((it) => it.id)
   try {
-    await call('nacifrah.menu.set_menu_order', { order: JSON.stringify(order), scope: 'all' })
+    await call(napi('menu.set_menu_order'), { order: JSON.stringify(order), scope: 'all' })
     toast.success(__('Порядок меню применён для всех'))
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось применить для всех'))

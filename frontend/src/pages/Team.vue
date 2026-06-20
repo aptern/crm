@@ -44,6 +44,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import Departments from '@/pages/Departments.vue'
 import Employees from '@/pages/Employees.vue'
 import Permissions from '@/pages/Permissions.vue'
@@ -60,7 +61,7 @@ const router = useRouter()
 // K3.1: вкладка «Права доступа» видна только тем, кому разрешено политикой
 const canManagePerms = ref(false)
 createResource({
-  url: 'nacifrah.hr.can_manage_perms',
+  url: napi('hr.can_manage_perms'),
   auto: true,
   onSuccess(v) {
     canManagePerms.value = !!v

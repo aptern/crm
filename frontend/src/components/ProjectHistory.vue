@@ -59,6 +59,7 @@
 
 <script setup>
 import { Dialog, Avatar, Button, createResource } from 'frappe-ui'
+import { napi } from '@/utils/api'
 import { timeAgo } from '@/utils'
 import { usersStore } from '@/stores/users'
 import { watch } from 'vue'
@@ -71,7 +72,7 @@ const show = defineModel({ type: Boolean })
 const { getUser } = usersStore()
 
 const history = createResource({
-  url: 'nacifrah.tasks_api.get_project_history',
+  url: napi('tasks_api.get_project_history'),
   makeParams: () => ({ project: props.project }),
 })
 

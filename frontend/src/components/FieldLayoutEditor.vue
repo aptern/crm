@@ -318,6 +318,7 @@
 </template>
 <script setup>
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
+import { napi } from '@/utils/api'
 import DragVerticalIcon from '@/components/Icons/DragVerticalIcon.vue'
 import Draggable from 'vuedraggable'
 import { getRandom } from '@/utils'
@@ -350,7 +351,7 @@ async function openCreateField(column) {
   createFieldForm.options = ''
   if (!fieldTypeOptions.value.length) {
     try {
-      fieldTypeOptions.value = await call('nacifrah.fields_api.get_allowed_fieldtypes')
+      fieldTypeOptions.value = await call(napi('fields_api.get_allowed_fieldtypes'))
     } catch (e) {
       fieldTypeOptions.value = []
     }
@@ -365,7 +366,7 @@ async function doCreateField() {
   }
   creatingField.value = true
   try {
-    const r = await call('nacifrah.fields_api.create_custom_field', {
+    const r = await call(napi('fields_api.create_custom_field'), {
       doctype: props.doctype,
       label: createFieldForm.label.trim(),
       fieldtype: createFieldForm.fieldtype,

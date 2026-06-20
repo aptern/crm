@@ -107,6 +107,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import { napi } from '@/utils/api'
 import { createResource, call, toast } from 'frappe-ui'
 import { ref } from 'vue'
 
@@ -125,7 +126,7 @@ const policyOptions = [
 ]
 
 const matrixResource = createResource({
-  url: 'nacifrah.hr.get_permission_matrix',
+  url: napi('hr.get_permission_matrix'),
   auto: true,
   onSuccess(d) {
     data.value = d
@@ -134,7 +135,7 @@ const matrixResource = createResource({
 })
 
 const policyResource = createResource({
-  url: 'nacifrah.hr.get_perms_policy',
+  url: napi('hr.get_perms_policy'),
   auto: false,
   onSuccess(p) {
     policy.value = p.policy || 'admin'
@@ -160,7 +161,7 @@ async function setPolicy(value) {
       ? customEmails.value.split(',').map((s) => s.trim()).filter(Boolean)
       : []
   try {
-    await call('nacifrah.hr.set_perms_policy', { policy: value, users })
+    await call(napi('hr.set_perms_policy'), { policy: value, users })
     toast.success(__('Сохранено'))
   } catch (e) {
     policy.value = prev
@@ -177,7 +178,7 @@ async function toggle(role, module, ptype, checked) {
   }
   saving.value = true
   try {
-    await call('nacifrah.hr.set_permission_cell', {
+    await call(napi('hr.set_permission_cell'), {
       role,
       module,
       ptype,
