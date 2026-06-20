@@ -1346,13 +1346,18 @@ async function createRecur() {
     recurErr.value = __('Введите название задачи')
     return
   }
+  // P3: все задачи (вкл. регулярные) привязываются к проекту — требуем выбранный проект
+  const proj = selected.value.length === 1 ? selected.value[0] : null
+  if (!proj) {
+    recurErr.value = __('Выберите ОДИН проект слева — регулярная задача привязывается к проекту')
+    return
+  }
   recurSaving.value = true
   try {
-    const proj = selected.value.length === 1 ? selected.value[0] : null
     await call(napi('automation.create_recurring_task'), {
       task_title: recurForm.value.task_title.trim(),
       frequency: recurForm.value.frequency,
-      project: proj || '',
+      project: proj,
       priority: recurForm.value.priority,
       weekday: recurForm.value.weekday,
       day_of_month: recurForm.value.day_of_month,
