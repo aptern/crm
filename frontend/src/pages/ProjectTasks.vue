@@ -614,6 +614,7 @@ import { formatDate, timeAgo } from '@/utils'
 // M6(д): приоритеты задачи — единый источник (общий с попапом создания)
 import { PRIORITY_LABELS, PRIORITY_CHIP, PRIORITY_ORDER } from '@/utils/taskPriority'
 import { STAGE_COLOR_PALETTE } from '@/utils/colors'
+import { defaultDueDate } from '@/utils/dateUtils'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -1223,18 +1224,6 @@ function showTask(name) {
 }
 
 // Дедлайн по умолчанию (B9): сегодня + 2 рабочих дня (выходные пропускаем).
-function defaultDueDate() {
-  const d = new Date()
-  let added = 0
-  while (added < 2) {
-    d.setDate(d.getDate() + 1)
-    const day = d.getDay() // 0=вс, 6=сб
-    if (day !== 0 && day !== 6) added++
-  }
-  const p = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} 00:00:00`
-}
-
 function createTask(column) {
   const project = route.params.projectId || selected.value[0]
   const defaults = {
