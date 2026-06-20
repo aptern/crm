@@ -19,6 +19,12 @@
       <span>{{ __('Loading...') }}</span>
     </div>
     <div
+      v-else-if="title == 'Telegram'"
+      class="flex flex-1 flex-col overflow-hidden"
+    >
+      <TelegramChat :doctype="doctype" :docname="docname" />
+    </div>
+    <div
       v-else-if="
         activities?.length ||
         (whatsappMessages.data?.length && title == 'WhatsApp')
@@ -465,6 +471,7 @@ import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import AttachmentIcon from '@/components/Icons/AttachmentIcon.vue'
 import WhatsAppIcon from '@/components/Icons/WhatsAppIcon.vue'
 import WhatsAppArea from '@/components/Activities/WhatsAppArea.vue'
+import TelegramChat from '@/components/Activities/TelegramChat.vue'
 import WhatsAppBox from '@/components/Activities/WhatsAppBox.vue'
 import LoadingIndicator from '@/components/Icons/LoadingIndicator.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
