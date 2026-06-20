@@ -554,12 +554,7 @@
                 class="w-28"
                 type="select"
                 :label="__('Приоритет')"
-                :options="[
-                  { value: 'Urgent', label: 'Критичный' },
-                  { value: 'High', label: 'Высокий' },
-                  { value: 'Medium', label: 'Средний' },
-                  { value: 'Low', label: 'Низкий' },
-                ]"
+                :options="PRIORITY_SELECT_OPTIONS"
                 v-model="recurForm.priority"
               />
               <FormControl
@@ -850,6 +845,11 @@ function priorityOptions(task) {
     onClick: () => updatePriority(task, p),
   }))
 }
+// {value,label} для FormControl select (регулярные задачи) — тот же единый источник.
+const PRIORITY_SELECT_OPTIONS = PRIORITY_ORDER.map((p) => ({
+  value: p,
+  label: PRIORITY_LABELS[p],
+}))
 async function updatePriority(task, val) {
   try {
     await call('frappe.client.set_value', {

@@ -51,6 +51,7 @@
 <script setup>
 import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
 import CustomActions from '@/components/CustomActions.vue'
+import { DEFAULT_CARD_KANBAN_FIELDS } from '@/utils/cardFields'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
@@ -76,13 +77,8 @@ const { showModal } = useDoctypeModal()
 
 const route = useRoute()
 
-// I33: карточка лида унифицирована с карточкой сделки (поля по умолчанию)
-const leadKanbanFields = JSON.stringify([
-  'annual_revenue',
-  'mobile_no',
-  '_assign',
-  'creation',
-])
+// I33: карточка лида унифицирована со сделкой — единый источник @/utils/cardFields
+const leadKanbanFields = DEFAULT_CARD_KANBAN_FIELDS
 
 const board = ref(null)
 const viewControls = ref(null)

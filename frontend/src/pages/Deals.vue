@@ -51,6 +51,7 @@
 <script setup>
 import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
 import CustomActions from '@/components/CustomActions.vue'
+import { DEFAULT_CARD_KANBAN_FIELDS } from '@/utils/cardFields'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import NoteIcon from '@/components/Icons/NoteIcon.vue'
 import TaskIcon from '@/components/Icons/TaskIcon.vue'
@@ -74,13 +75,8 @@ const { showModal } = useDoctypeModal()
 
 const route = useRoute()
 
-// I13: поля карточки сделки по умолчанию — сумма, телефон, исполнитель + дата создания
-const dealKanbanFields = JSON.stringify([
-  'annual_revenue',
-  'mobile_no',
-  '_assign',
-  'creation',
-])
+// I13: поля карточки сделки по умолчанию — единый источник @/utils/cardFields
+const dealKanbanFields = DEFAULT_CARD_KANBAN_FIELDS
 
 const board = ref(null)
 const viewControls = ref(null)

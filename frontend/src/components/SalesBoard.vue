@@ -266,6 +266,7 @@ import { organizationsStore } from '@/stores/organizations'
 import { statusesStore } from '@/stores/statuses'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
 import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
+import { AMOUNT_FIELD } from '@/utils/cardFields'
 import { Tooltip, Avatar, Badge, Dropdown, FeatherIcon, Button } from 'frappe-ui'
 import { useRoute } from 'vue-router'
 import { ref, computed, h } from 'vue'
@@ -275,7 +276,7 @@ const props = defineProps({
   filters: { type: Object, default: () => ({}) },
   boardFilters: { type: Object, default: () => ({}) },
   kanbanFields: { type: String, default: '' },
-  amountField: { type: String, default: 'annual_revenue' },
+  amountField: { type: String, default: AMOUNT_FIELD },
   allowedViews: { type: Array, default: () => ['list', 'group_by', 'kanban'] },
   defaultColumnField: { type: String, default: '' },
   kanbanColumns: { type: String, default: '' },

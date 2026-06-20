@@ -66,6 +66,7 @@
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import CustomActions from '@/components/CustomActions.vue'
+import { DEFAULT_CARD_KANBAN_FIELDS } from '@/utils/cardFields'
 import SalesBoard from '@/components/SalesBoard.vue'
 import DealsListView from '@/components/ListViews/DealsListView.vue'
 import DealModal from '@/components/Modals/DealModal.vue'
@@ -93,13 +94,8 @@ const board = ref(null)
 const viewControls = ref(null)
 const deals = ref({})
 
-// I13: поля карточки сделки — сумма, телефон, исполнитель + дата создания (как у «Сделок»)
-const dealKanbanFields = JSON.stringify([
-  'annual_revenue',
-  'mobile_no',
-  '_assign',
-  'creation',
-])
+// I13: поля карточки сделки (как у «Сделок») — единый источник @/utils/cardFields
+const dealKanbanFields = DEFAULT_CARD_KANBAN_FIELDS
 
 // явные колонки воронки (имя+цвет+is_won/is_lost) для ViewControls/KanbanView
 const funnelKanbanColumns = computed(() => {
