@@ -323,6 +323,8 @@
       </div>
     </template>
   </Dialog>
+
+  <ConfirmModal :state="confirmState" />
 </template>
 
 <script setup>
@@ -345,6 +347,7 @@ import {
 import { reactive, ref, computed, watch, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const { isManager, isAdmin } = usersStore()
 
@@ -402,6 +405,7 @@ function statusClass(s) {
 
 // ── D1 карточка сотрудника ───────────────────────────────────────────
 const card = ref(null)
+const confirmState = ref({ show: false })
 // K3: инлайн-смена должности прямо в карточке сотрудника
 const cardDesignation = ref('')
 const cardDesigNewMode = ref(false)
@@ -531,24 +535,23 @@ function openFire() {
 }
 
 // K8: полное удаление сотрудника (карточка + логин) — только админ
-async function doDelete() {
+function doDelete() {
   if (!card.value?.name) return
-  if (
-    !window.confirm(
-      __('Удалить сотрудника «{0}» полностью? Удалятся карточка и логин. Необратимо.').replace(
-        '{0}',
-        card.value.employee_name,
-      ),
-    )
-  )
-    return
-  try {
-    await call(napi('hr.delete_employee'), { employee: card.value.name })
-    card.value = null
-    await loadEmployees()
-    toast.success(__('Сотрудник удалён'))
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось удалить'))
+  const emp = card.value
+  confirmState.value = {
+    show: true,
+    danger: true,
+    confirmLabel: __('Удалить'),
+    message: __('Удалить сотрудника «{0}» полностью? Удалятся карточка и логин. Необратимо.').replace(
+      '{0}',
+      emp.employee_name,
+    ),
+    onConfirm: async () => {
+      await call(napi('hr.delete_employee'), { employee: emp.name })
+      card.value = null
+      await loadEmployees()
+      toast.success(__('Сотрудник удалён'))
+    },
   }
 }
 async function doFire() {

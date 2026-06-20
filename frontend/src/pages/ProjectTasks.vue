@@ -590,6 +590,8 @@
 
   <!-- M6(б): карточка проекта (слайд-овер) -->
   <ProjectCard v-model="cardOpen" :project="cardProject" :title="cardTitle" />
+
+  <ConfirmModal :state="confirmState" />
 </template>
 
 <script setup>
@@ -617,6 +619,7 @@ import { PRIORITY_LABELS, PRIORITY_CHIP, PRIORITY_ORDER } from '@/utils/taskPrio
 import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import { defaultDueDate } from '@/utils/dateUtils'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -671,6 +674,7 @@ const projects = createResource({
 
 const selected = ref([])
 const initialized = ref(false)
+const confirmState = ref({ show: false })
 // live: проект = CRM Deal; создал/удалил/переименовал → список проектов слева без F5
 useRealtimeRefresh(['CRM Deal'], () => projects.reload())
 const showHistory = ref(false)
@@ -954,20 +958,18 @@ async function saveCreateProject() {
   }
 }
 // M6(а): удаление проекта вместе с задачами
-async function deleteProject(p) {
-  if (
-    !window.confirm(
-      __('Удалить проект «{0}» вместе со всеми его задачами?').replace('{0}', projDisplay(p)),
-    )
-  )
-    return
-  try {
-    await call(napi('api.delete_project'), { project: p.name })
-    if (selected.value.includes(p.name)) selectAll()
-    await projects.reload()
-    toast.success(__('Проект удалён'))
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось удалить проект'))
+function deleteProject(p) {
+  confirmState.value = {
+    show: true,
+    danger: true,
+    confirmLabel: __('Удалить'),
+    message: __('Удалить проект «{0}» вместе со всеми его задачами?').replace('{0}', projDisplay(p)),
+    onConfirm: async () => {
+      await call(napi('api.delete_project'), { project: p.name })
+      if (selected.value.includes(p.name)) selectAll()
+      await projects.reload()
+      toast.success(__('Проект удалён'))
+    },
   }
 }
 

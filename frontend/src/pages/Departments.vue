@@ -59,83 +59,74 @@
   </div>
 
   <!-- создание / подотдел -->
-  <Dialog v-model="showCreate" :options="{ title: __('Создать отдел') }">
-    <template #body-content>
-      <div class="flex flex-col gap-3">
-        <FormControl
-          :label="__('Название')"
-          v-model="createForm.name"
-          :placeholder="__('Например, Дизайн')"
-        />
-        <FormControl
-          type="select"
-          :label="__('Родительский отдел')"
-          :options="parentOptions"
-          v-model="createForm.parent"
-        />
-        <FormControl
-          type="select"
-          :label="__('Руководитель')"
-          :options="headOptions"
-          v-model="createForm.head"
-        />
-        <ErrorMessage v-if="createError" :message="createError" />
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button :label="__('Отмена')" @click="showCreate = false" />
-        <Button
-          variant="solid"
-          :label="__('Создать')"
-          :loading="creating"
-          @click="doCreate"
-        />
-      </div>
-    </template>
-  </Dialog>
+  <SimpleModal v-model="showCreate" :title="__('Создать отдел')">
+    <div class="flex flex-col gap-3">
+      <FormControl
+        :label="__('Название')"
+        v-model="createForm.name"
+        :placeholder="__('Например, Дизайн')"
+      />
+      <FormControl
+        type="select"
+        :label="__('Родительский отдел')"
+        :options="parentOptions"
+        v-model="createForm.parent"
+      />
+      <FormControl
+        type="select"
+        :label="__('Руководитель')"
+        :options="headOptions"
+        v-model="createForm.head"
+      />
+      <ErrorMessage v-if="createError" :message="createError" />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <Button :label="__('Отмена')" @click="showCreate = false" />
+      <Button variant="solid" :label="__('Создать')" :loading="creating" @click="doCreate" />
+    </div>
+  </SimpleModal>
 
   <!-- выбор пользователя (руководитель отдела / CEO) -->
-  <Dialog v-model="showUser" :options="{ title: userDlgTitle }">
-    <template #body-content>
-      <div class="flex flex-col gap-2">
-        <FormControl
-          type="select"
-          :label="__('Пользователь')"
-          :options="headOptions"
-          v-model="userPick"
-        />
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button :label="__('Отмена')" @click="showUser = false" />
-        <Button variant="solid" :label="__('Сохранить')" @click="doUser" />
-      </div>
-    </template>
-  </Dialog>
+  <SimpleModal v-model="showUser" :title="userDlgTitle">
+    <div class="flex flex-col gap-2">
+      <FormControl
+        type="select"
+        :label="__('Пользователь')"
+        :options="headOptions"
+        v-model="userPick"
+      />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <Button :label="__('Отмена')" @click="showUser = false" />
+      <Button variant="solid" :label="__('Сохранить')" @click="doUser" />
+    </div>
+  </SimpleModal>
 
   <!-- назначить/перенести сотрудника -->
-  <Dialog v-model="showEmp" :options="{ title: empDlgTitle }">
-    <template #body-content>
-      <div class="flex flex-col gap-2">
-        <FormControl
-          v-if="empMode === 'assign'"
-          type="select"
-          :label="__('Сотрудник')"
-          :options="employeeOptions"
-          v-model="empPick"
-        />
-        <FormControl
-          v-else
-          type="select"
-          :label="__('Отдел')"
-          :options="deptOptions"
-          v-model="deptPick"
-        />
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button :label="__('Отмена')" @click="showEmp = false" />
-        <Button variant="solid" :label="__('Сохранить')" @click="doEmp" />
-      </div>
-    </template>
-  </Dialog>
+  <SimpleModal v-model="showEmp" :title="empDlgTitle">
+    <div class="flex flex-col gap-2">
+      <FormControl
+        v-if="empMode === 'assign'"
+        type="select"
+        :label="__('Сотрудник')"
+        :options="employeeOptions"
+        v-model="empPick"
+      />
+      <FormControl
+        v-else
+        type="select"
+        :label="__('Отдел')"
+        :options="deptOptions"
+        v-model="deptPick"
+      />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <Button :label="__('Отмена')" @click="showEmp = false" />
+      <Button variant="solid" :label="__('Сохранить')" @click="doEmp" />
+    </div>
+  </SimpleModal>
+
+  <ConfirmModal :state="confirmState" />
 
   <PhotoCropDialog
     v-model="showPhoto"
@@ -152,7 +143,6 @@ import PhotoCropDialog from '@/components/PhotoCropDialog.vue'
 import {
   Avatar,
   Button,
-  Dialog,
   Dropdown,
   FormControl,
   ErrorMessage,
@@ -162,6 +152,8 @@ import {
 import { reactive, ref, computed, onMounted, provide } from 'vue'
 import { usersStore } from '@/stores/users'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
+import SimpleModal from '@/components/SimpleModal.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 // K3: при встраивании во вкладку «Команда» прячем собственный LayoutHeader
 defineProps({ embedded: { type: Boolean, default: false } })
@@ -171,6 +163,7 @@ defineExpose({ openCreate: (p) => openCreate(p) })
 const { isManager, users: usersList } = usersStore()
 
 const chart = ref(null)
+const confirmState = ref({ show: false })
 async function load() {
   try {
     chart.value = await call(napi('hr.get_org_chart'))
@@ -346,29 +339,30 @@ async function detachEmp(emp) {
   }
 }
 
-async function removeDept(node) {
-  if (!window.confirm(__('Удалить отдел «{0}»?').replace('{0}', node.label))) return
-  try {
-    await call(napi('hr.delete_department'), { department: node.name })
-    await load()
-    toast.success(__('Отдел удалён'))
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось удалить'))
+function removeDept(node) {
+  confirmState.value = {
+    show: true,
+    danger: true,
+    confirmLabel: __('Удалить'),
+    message: __('Удалить отдел «{0}»?').replace('{0}', node.label),
+    onConfirm: async () => {
+      await call(napi('hr.delete_department'), { department: node.name })
+      await load()
+      toast.success(__('Отдел удалён'))
+    },
   }
 }
-async function clearAll() {
-  if (
-    !window.confirm(
-      __('Удалить ВСЕ отделы? Сотрудники останутся, но без отдела.'),
-    )
-  )
-    return
-  try {
-    const r = await call(napi('hr.clear_departments'))
-    await load()
-    toast.success(__('Удалено отделов: {0}').replace('{0}', r?.count ?? 0))
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось'))
+function clearAll() {
+  confirmState.value = {
+    show: true,
+    danger: true,
+    confirmLabel: __('Удалить все'),
+    message: __('Удалить ВСЕ отделы? Сотрудники останутся, но без отдела.'),
+    onConfirm: async () => {
+      const r = await call(napi('hr.clear_departments'))
+      await load()
+      toast.success(__('Удалено отделов: {0}').replace('{0}', r?.count ?? 0))
+    },
   }
 }
 

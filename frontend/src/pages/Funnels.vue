@@ -149,19 +149,19 @@
     </div>
   </div>
 
-  <Dialog v-model="createDialog" :options="{ title: __('Создать воронку') }">
-    <template #body-content>
-      <div class="flex flex-col gap-3">
-        <FormControl :label="__('Название воронки')" v-model="newFunnelName" :placeholder="__('Например, Партнёры')" />
-        <ErrorMessage v-if="createErr" :message="createErr" />
-        <p class="text-xs text-ink-gray-4">{{ __('После создания раскройте воронку и настройте этапы (цвет, тип, порядок).') }}</p>
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button :label="__('Отмена')" @click="createDialog = false" />
-        <Button variant="solid" :label="__('Создать')" :loading="creating" @click="doCreateFunnel" />
-      </div>
-    </template>
-  </Dialog>
+  <SimpleModal v-model="createDialog" :title="__('Создать воронку')">
+    <div class="flex flex-col gap-3">
+      <FormControl :label="__('Название воронки')" v-model="newFunnelName" :placeholder="__('Например, Партнёры')" />
+      <ErrorMessage v-if="createErr" :message="createErr" />
+      <p class="text-xs text-ink-gray-4">{{ __('После создания раскройте воронку и настройте этапы (цвет, тип, порядок).') }}</p>
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <Button :label="__('Отмена')" @click="createDialog = false" />
+      <Button variant="solid" :label="__('Создать')" :loading="creating" @click="doCreateFunnel" />
+    </div>
+  </SimpleModal>
+
+  <ConfirmModal :state="confirmState" />
 </template>
 
 <script setup>
@@ -172,7 +172,6 @@ import {
   Button,
   Popover,
   FeatherIcon,
-  Dialog,
   FormControl,
   ErrorMessage,
   call,
@@ -183,9 +182,12 @@ import { parseColor } from '@/utils'
 import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import { useBroadcast } from '@/composables/useBroadcast.js'
 import { statusesStore } from '@/stores/statuses'
+import SimpleModal from '@/components/SimpleModal.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import Draggable from 'vuedraggable'
 
 const { send } = useBroadcast()
+const confirmState = ref({ show: false })
 const { dealStatuses, leadStatuses } = statusesStore()
 
 const PALETTE = STAGE_COLOR_PALETTE
@@ -401,15 +403,19 @@ async function doCreateFunnel() {
     creating.value = false
   }
 }
-async function deleteFunnel(item) {
-  if (!window.confirm(__('Удалить воронку «{0}»? Сделки будут отвязаны.', [item.title]))) return
-  try {
-    await call(napi('api.delete_funnel'), { funnel: item.name })
-    await loadAll()
-    send('funnels_changed') // live: воронка исчезает из бокового меню без refresh
-    toast.success(__('Воронка удалена'))
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось удалить воронку'))
+function deleteFunnel(item) {
+  // подтверждение через ConfirmModal (window.confirm у заказчика блокируется браузером)
+  confirmState.value = {
+    show: true,
+    danger: true,
+    confirmLabel: __('Удалить'),
+    message: __('Удалить воронку «{0}»? Сделки будут отвязаны.', [item.title]),
+    onConfirm: async () => {
+      await call(napi('api.delete_funnel'), { funnel: item.name })
+      await loadAll()
+      send('funnels_changed') // live: воронка исчезает из бокового меню без refresh
+      toast.success(__('Воронка удалена'))
+    },
   }
 }
 </script>
