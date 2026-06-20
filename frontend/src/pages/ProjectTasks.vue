@@ -170,7 +170,7 @@
         }"
       />
   <KanbanView
-    v-if="$route.params.viewType == 'kanban' && rows.length"
+    v-if="$route.params.viewType == 'kanban' && tasks?.data"
     v-model="tasks"
     :options="{
       doctype: 'CRM Task',

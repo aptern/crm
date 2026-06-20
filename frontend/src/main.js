@@ -75,3 +75,17 @@ if (import.meta.env.DEV) {
 if (import.meta.env.DEV) {
   window.$dialog = createDialog
 }
+
+// Гарантированное обновление фронта: при деплое новый service worker
+// (skipWaiting+clientsClaim) перехватывает управление → один раз перезагружаем
+// вкладку, чтобы у пользователя сразу была свежая сборка. Иначе старый SW-кэш
+// висит до ручной очистки (симптом «фикс не виден даже после очистки кэша»).
+// Флаг refreshing защищает от циклической перезагрузки.
+if ('serviceWorker' in navigator) {
+  let refreshing = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return
+    refreshing = true
+    window.location.reload()
+  })
+}
