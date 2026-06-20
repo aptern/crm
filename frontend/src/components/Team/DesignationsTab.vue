@@ -105,6 +105,24 @@
         </div>
       </template>
     </Dialog>
+
+    <Dialog v-model="showDelete" :options="{ title: __('Удалить должность') }">
+      <template #body-content>
+        <p class="text-base text-ink-gray-7">
+          {{ __('Удалить должность «{0}»? Сотрудники останутся без должности.').replace('{0}', delTarget) }}
+        </p>
+        <div class="mt-4 flex justify-end gap-2">
+          <Button :label="__('Отмена')" @click="showDelete = false" />
+          <Button
+            variant="solid"
+            theme="red"
+            :label="__('Удалить')"
+            :loading="deleting"
+            @click="confirmDelete"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -198,18 +216,25 @@ async function saveEdit() {
     saving.value = false
   }
 }
-async function removeDesig(name) {
-  if (
-    !window.confirm(
-      __('Удалить должность «{0}»? Сотрудники останутся без должности.').replace('{0}', name),
-    )
-  )
-    return
+// Удаление через ШТАТНЫЙ Dialog (не window.confirm — он молча не срабатывает, если браузер
+// запомнил «не показывать диалоги этой страницы»; это и был корень «кнопка не работает», M5).
+const showDelete = ref(false)
+const delTarget = ref('')
+const deleting = ref(false)
+function removeDesig(name) {
+  delTarget.value = name
+  showDelete.value = true
+}
+async function confirmDelete() {
+  deleting.value = true
   try {
-    await call(napi('hr.delete_designation'), { designation: name })
+    await call(napi('hr.delete_designation'), { designation: delTarget.value })
+    showDelete.value = false
     await load()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось'))
+  } finally {
+    deleting.value = false
   }
 }
 
