@@ -48,6 +48,14 @@
           >
             {{ projDisplay(p) }}
           </button>
+          <!-- M6(б): открыть карточку проекта (чат/файлы/активность) -->
+          <button
+            class="hidden shrink-0 text-ink-gray-4 hover:text-ink-gray-7 group-hover/proj:block"
+            :title="__('Карточка проекта')"
+            @click.stop="openProjectCard(p)"
+          >
+            <FeatherIcon name="maximize-2" class="h-3.5 w-3.5" />
+          </button>
           <button
             v-if="isManager()"
             class="hidden shrink-0 text-ink-gray-4 hover:text-ink-gray-7 group-hover/proj:block"
@@ -584,6 +592,9 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- M6(б): карточка проекта (слайд-овер) -->
+  <ProjectCard v-model="cardOpen" :project="cardProject" :title="cardTitle" />
 </template>
 
 <script setup>
@@ -599,6 +610,7 @@ import TasksListView from '@/components/ListViews/TasksListView.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import KanbanView from '@/components/Kanban/KanbanView.vue'
 import ProjectHistory from '@/components/ProjectHistory.vue'
+import ProjectCard from '@/components/ProjectCard.vue'
 import { useDoctypeModal } from '@/composables/doctypeModal'
 import { getMeta } from '@/stores/meta'
 import { usersStore } from '@/stores/users'
@@ -954,6 +966,16 @@ async function deleteProject(p) {
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось удалить проект'))
   }
+}
+
+// M6(б): карточка проекта (слайд-овер: чат/файлы/активность)
+const cardOpen = ref(false)
+const cardProject = ref('')
+const cardTitle = ref('')
+function openProjectCard(p) {
+  cardProject.value = p.name
+  cardTitle.value = projDisplay(p)
+  cardOpen.value = true
 }
 
 const tasksListView = ref(null)
