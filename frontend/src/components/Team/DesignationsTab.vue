@@ -68,61 +68,50 @@
       </div>
     </div>
 
-    <Dialog
+    <SimpleModal
       v-model="showEdit"
-      :options="{ title: editMode === 'create' ? __('Новая должность') : __('Переименовать должность') }"
+      :title="editMode === 'create' ? __('Новая должность') : __('Переименовать должность')"
     >
-      <template #body-content>
-        <FormControl
-          :label="__('Название')"
-          v-model="editName"
-          :placeholder="__('Например, Дизайнер')"
-          @keyup.enter="saveEdit"
-        />
-        <div class="mt-4 flex justify-end gap-2">
-          <Button :label="__('Отмена')" @click="showEdit = false" />
-          <Button
-            variant="solid"
-            :label="__('Сохранить')"
-            :loading="saving"
-            @click="saveEdit"
-          />
-        </div>
-      </template>
-    </Dialog>
+      <FormControl
+        :label="__('Название')"
+        v-model="editName"
+        :placeholder="__('Например, Дизайнер')"
+        @keyup.enter="saveEdit"
+      />
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="showEdit = false" />
+        <Button variant="solid" :label="__('Сохранить')" :loading="saving" @click="saveEdit" />
+      </div>
+    </SimpleModal>
 
-    <Dialog v-model="showAssign" :options="{ title: __('Назначить сотрудника на должность') }">
-      <template #body-content>
-        <FormControl
-          type="select"
-          :label="__('Сотрудник')"
-          :options="employeeOptions"
-          v-model="assignEmp"
-        />
-        <div class="mt-4 flex justify-end gap-2">
-          <Button :label="__('Отмена')" @click="showAssign = false" />
-          <Button variant="solid" :label="__('Назначить')" @click="doAssign" />
-        </div>
-      </template>
-    </Dialog>
+    <SimpleModal v-model="showAssign" :title="__('Назначить сотрудника на должность')">
+      <FormControl
+        type="select"
+        :label="__('Сотрудник')"
+        :options="employeeOptions"
+        v-model="assignEmp"
+      />
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="showAssign = false" />
+        <Button variant="solid" :label="__('Назначить')" @click="doAssign" />
+      </div>
+    </SimpleModal>
 
-    <Dialog v-model="showDelete" :options="{ title: __('Удалить должность') }">
-      <template #body-content>
-        <p class="text-base text-ink-gray-7">
-          {{ __('Удалить должность «{0}»? Сотрудники останутся без должности.').replace('{0}', delTarget) }}
-        </p>
-        <div class="mt-4 flex justify-end gap-2">
-          <Button :label="__('Отмена')" @click="showDelete = false" />
-          <Button
-            variant="solid"
-            theme="red"
-            :label="__('Удалить')"
-            :loading="deleting"
-            @click="confirmDelete"
-          />
-        </div>
-      </template>
-    </Dialog>
+    <SimpleModal v-model="showDelete" :title="__('Удалить должность')">
+      <p class="text-base text-ink-gray-7">
+        {{ __('Удалить должность «{0}»? Сотрудники останутся без должности.').replace('{0}', delTarget) }}
+      </p>
+      <div class="mt-4 flex justify-end gap-2">
+        <Button :label="__('Отмена')" @click="showDelete = false" />
+        <Button
+          variant="solid"
+          theme="red"
+          :label="__('Удалить')"
+          :loading="deleting"
+          @click="confirmDelete"
+        />
+      </div>
+    </SimpleModal>
   </div>
 </template>
 
@@ -130,13 +119,13 @@
 import {
   Avatar,
   Button,
-  Dialog,
   FormControl,
   FeatherIcon,
   call,
   toast,
 } from 'frappe-ui'
 import { napi } from '@/utils/api'
+import SimpleModal from '@/components/SimpleModal.vue'
 import { ref, computed, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
@@ -216,8 +205,8 @@ async function saveEdit() {
     saving.value = false
   }
 }
-// Удаление через ШТАТНЫЙ Dialog (не window.confirm — он молча не срабатывает, если браузер
-// запомнил «не показывать диалоги этой страницы»; это и был корень «кнопка не работает», M5).
+// Удаление через SimpleModal (не window.confirm и не frappe-ui Dialog — оба у заказчика
+// «не показывались»: confirm молча блокировался, Dialog рендерился невидимым. M5).
 const showDelete = ref(false)
 const delTarget = ref('')
 const deleting = ref(false)
