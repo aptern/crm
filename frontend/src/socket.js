@@ -11,7 +11,9 @@ export function initSocket() {
 
   let socket = io(url, {
     withCredentials: true,
-    reconnectionAttempts: 5,
+    // live-обновление не должно «молча умирать» после нескольких обрывов — реконнект без лимита
+    reconnectionAttempts: Infinity,
+    reconnectionDelayMax: 10000,
   })
   socket.on('refetch_resource', (data) => {
     if (data.cache_key) {

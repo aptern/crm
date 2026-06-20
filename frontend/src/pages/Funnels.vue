@@ -180,7 +180,10 @@ import {
 import { reactive, ref, onMounted } from 'vue'
 import { parseColor } from '@/utils'
 import { STAGE_COLOR_PALETTE } from '@/utils/colors'
+import { useBroadcast } from '@/composables/useBroadcast.js'
 import Draggable from 'vuedraggable'
+
+const { send } = useBroadcast()
 
 const PALETTE = STAGE_COLOR_PALETTE
 const ICON_SET = [
@@ -351,6 +354,7 @@ function setIcon(item, icon) {
   item.icon = icon
   run(async () => {
     await call('nacifrah.api.update_funnel', { funnel: item.name, icon })
+    send('funnels_changed') // live: иконка воронки в меню без refresh
   })
 }
 
@@ -380,6 +384,7 @@ async function doCreateFunnel() {
     createDialog.value = false
     newFunnelName.value = ''
     await loadAll()
+    send('funnels_changed') // live: воронка появляется в боковом меню без refresh
     const it = funnels.value.find((f) => f.type === 'custom' && f.title === nm)
     if (it) it.expanded = true
     toast.success(__('Воронка создана'))
@@ -394,6 +399,7 @@ async function deleteFunnel(item) {
   try {
     await call('nacifrah.api.delete_funnel', { funnel: item.name })
     await loadAll()
+    send('funnels_changed') // live: воронка исчезает из бокового меню без refresh
     toast.success(__('Воронка удалена'))
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось удалить воронку'))

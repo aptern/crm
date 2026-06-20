@@ -11,6 +11,12 @@ from frappe.utils.telemetry import capture
 no_cache = 1
 
 
+def _base_currency_symbol():
+	"""nacifrah: символ базовой валюты CRM из настроек (для фронта, без хардкода ₽)."""
+	cur = frappe.db.get_single_value("FCRM Settings", "currency") or "USD"
+	return frappe.db.get_value("Currency", cur, "symbol") or ""
+
+
 def get_context():
 	from crm.api import check_app_permission
 
@@ -41,7 +47,9 @@ def get_boot():
 			"read_only_mode": frappe.flags.read_only,
 			"csrf_token": frappe.sessions.get_csrf_token(),
 			"setup_complete": cint(frappe.get_system_settings("setup_complete")),
-			"sysdefaults": frappe.defaults.get_defaults(),
+			# nacifrah: символ валюты — из настроек (FCRM Settings.currency → Currency.symbol),
+			# чтобы фронт (formatRub) не хардкодил ₽. Падает в '' если не настроено.
+			"sysdefaults": {**frappe.defaults.get_defaults(), "currency_symbol": _base_currency_symbol()},
 			"is_demo_site": frappe.conf.get("is_demo_site"),
 			"demo_data_created": frappe.db.get_default("crm_demo_data_created") == "1",
 			"is_fc_site": is_fc_site(),

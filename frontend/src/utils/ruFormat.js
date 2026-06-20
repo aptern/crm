@@ -53,11 +53,22 @@ export function formatPhoneDisplay(s) {
 }
 
 // --- Сумма (I9) -----------------------------------------------------------
+// Фолбэк-символ. Сам символ — ИЗ НАСТРОЕК (N1.1): boot кладёт
+// window.sysdefaults.currency_symbol (FCRM Settings.currency → Currency.symbol).
 export const RUBLE_SIGN = '₽'
 
-// Разряды через пробел, БЕЗ копеек, знак рубля ВПЛОТНУЮ: 1234567 → "1 234 567₽"
-// (по маске заказчика «110 000₽» — без пробела перед ₽).
-export function formatRub(value, sign = RUBLE_SIGN) {
+// Символ валюты из настроек, фолбэк ₽ — чтобы менялся из одного места (System Settings).
+export function currencySign() {
+  try {
+    return (window.sysdefaults && window.sysdefaults.currency_symbol) || RUBLE_SIGN
+  } catch {
+    return RUBLE_SIGN
+  }
+}
+
+// Разряды через пробел, БЕЗ копеек, знак валюты ВПЛОТНУЮ: 1234567 → "1 234 567₽"
+// (по маске заказчика «110 000₽» — без пробела перед символом). Символ — из настроек.
+export function formatRub(value, sign = currencySign()) {
   const n = Math.round(flt(value, 0) || 0)
   const grouped = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
   return (n < 0 ? '-' : '') + grouped + (sign || '')

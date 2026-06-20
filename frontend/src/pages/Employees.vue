@@ -343,6 +343,7 @@ import {
 } from 'frappe-ui'
 import { reactive, ref, computed, watch, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
+import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 
 const { isManager, isAdmin } = usersStore()
 
@@ -606,6 +607,12 @@ const departments = createResource({
   url: 'frappe.client.get_list',
   params: { doctype: 'Department', fields: ['name'], limit_page_length: 0 },
   auto: true,
+})
+// live: сотрудник/должность/отдел изменены где-угодно → обновляем список и справочники
+useRealtimeRefresh(['Employee', 'Designation', 'Department'], () => {
+  loadEmployees()
+  designations.reload()
+  departments.reload()
 })
 
 // Единый источник ролей — бэкенд nacifrah.hr.get_agency_roles (правило централизации).

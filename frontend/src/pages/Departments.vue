@@ -160,6 +160,7 @@ import {
 } from 'frappe-ui'
 import { reactive, ref, computed, onMounted, provide } from 'vue'
 import { usersStore } from '@/stores/users'
+import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 
 // K3: при встраивании во вкладку «Команда» прячем собственный LayoutHeader
 defineProps({ embedded: { type: Boolean, default: false } })
@@ -177,6 +178,8 @@ async function load() {
   }
 }
 onMounted(load)
+// live: отдел/сотрудник изменены где-угодно → перечитываем оргструктуру без refresh
+useRealtimeRefresh(['Department', 'Employee'], load)
 
 const users = computed(
   () =>

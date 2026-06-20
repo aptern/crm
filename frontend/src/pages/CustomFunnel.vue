@@ -79,6 +79,7 @@ import { callEnabled } from '@/composables/telephony'
 import { useDoctypeModal } from '@/composables/doctypeModal'
 import { Button, FeatherIcon, call, toast } from 'frappe-ui'
 import { ref, reactive, computed, watch, onMounted, h } from 'vue'
+import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 import { useRoute } from 'vue-router'
 
 const { makeCall } = globalStore()
@@ -114,6 +115,12 @@ async function loadFunnelMeta() {
   }
 }
 onMounted(loadFunnelMeta)
+// live: этап воронки изменён где-угодно → перечитываем мету + доску без refresh
+// (сама доска CRM Deal обновляется через ViewControls)
+useRealtimeRefresh(['CRM Deal Status', 'CRM Lead Status', 'CRM Deal'], () => {
+  loadFunnelMeta()
+  deals.value?.reload?.()
+})
 watch(
   () => route.params.name,
   (n) => {

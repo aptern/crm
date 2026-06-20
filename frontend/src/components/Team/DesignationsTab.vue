@@ -120,6 +120,7 @@ import {
 } from 'frappe-ui'
 import { ref, computed, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
+import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 
 const { isManager } = usersStore()
 
@@ -134,6 +135,8 @@ async function load() {
   }
 }
 onMounted(load)
+// live: должность/сотрудник изменены где-угодно → обновляем без ручного refresh
+useRealtimeRefresh(['Designation', 'Employee'], load)
 
 const groups = computed(() => {
   const byDesig = {}

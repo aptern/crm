@@ -355,7 +355,9 @@ const { getPinnedViews, getPublicViews } = viewsStore()
 const { toggle: toggleNotificationPanel } = notificationsStore()
 const { capture } = useTelemetry()
 const { clearDemoData, isDemoDataCreated } = useDemoData()
-const { send } = useBroadcast()
+const { send, on } = useBroadcast()
+// live: создал/удалил/переименовал воронку где-угодно → меню обновляется без refresh
+on('funnels_changed', () => _loadCustomFunnels().then(_rebuildFunnels))
 
 const isSidebarCollapsed = useStorage('isSidebarCollapsed', false)
 
