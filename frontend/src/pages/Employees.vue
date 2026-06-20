@@ -113,7 +113,9 @@
               </div>
               <Button variant="ghost" icon="x" @click="card = null" />
             </div>
-            <div class="flex-1 overflow-y-auto px-6 py-5">
+            <!-- M10: 2 колонки — инфо слева, «Контент» (работа сотрудника) справа -->
+            <div class="flex min-h-0 flex-1 flex-col overflow-hidden sm:flex-row">
+            <div class="shrink-0 overflow-y-auto border-b border-outline-gray-1 px-6 py-5 sm:w-72 sm:border-b-0 sm:border-r">
               <!-- K3: должность — редактируемая (админ меняет в выпадающем списке) -->
               <div class="mb-3 flex items-start gap-2 text-sm">
                 <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">
@@ -177,6 +179,57 @@
                   }}</span>
                 </div>
               </div>
+            </div>
+            <!-- M10: «Контент» — работа сотрудника (справа) -->
+            <div class="flex-1 overflow-y-auto px-6 py-5">
+              <div class="text-base font-semibold text-ink-gray-8">{{ __('Работа сотрудника') }}</div>
+              <div v-if="!work" class="mt-3 text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
+              <template v-else>
+                <div class="mt-4 text-xs font-medium uppercase text-ink-gray-5">
+                  {{ __('Проекты') }} ({{ work.projects.length }})
+                </div>
+                <div v-if="work.projects.length" class="mt-1 flex flex-col gap-1">
+                  <div
+                    v-for="p in work.projects"
+                    :key="p.name"
+                    class="truncate rounded px-2 py-1 text-sm text-ink-gray-8 hover:bg-surface-gray-1"
+                  >
+                    {{ p.nacifrah_project_name || p.organization || p.name }}
+                  </div>
+                </div>
+                <div v-else class="mt-1 text-sm text-ink-gray-4">{{ __('нет') }}</div>
+
+                <div class="mt-4 text-xs font-medium uppercase text-ink-gray-5">
+                  {{ __('Сделки') }} ({{ work.deals.length }})
+                </div>
+                <div v-if="work.deals.length" class="mt-1 flex flex-col gap-1">
+                  <div
+                    v-for="d in work.deals"
+                    :key="d.name"
+                    class="flex items-center justify-between gap-2 rounded px-2 py-1 text-sm hover:bg-surface-gray-1"
+                  >
+                    <span class="truncate text-ink-gray-8">{{ d.organization || d.name }}</span>
+                    <span class="shrink-0 text-xs text-ink-gray-4">{{ d.status }}</span>
+                  </div>
+                </div>
+                <div v-else class="mt-1 text-sm text-ink-gray-4">{{ __('нет') }}</div>
+
+                <div class="mt-4 text-xs font-medium uppercase text-ink-gray-5">
+                  {{ __('Задачи') }} ({{ work.tasks.length }})
+                </div>
+                <div v-if="work.tasks.length" class="mt-1 flex flex-col gap-1">
+                  <div
+                    v-for="t in work.tasks"
+                    :key="t.name"
+                    class="flex items-center justify-between gap-2 rounded px-2 py-1 text-sm hover:bg-surface-gray-1"
+                  >
+                    <span class="truncate text-ink-gray-8">{{ t.title }}</span>
+                    <span class="shrink-0 text-xs text-ink-gray-4">{{ t.nacifrah_stage }}</span>
+                  </div>
+                </div>
+                <div v-else class="mt-1 text-sm text-ink-gray-4">{{ __('нет') }}</div>
+              </template>
+            </div>
             </div>
             <div
               v-if="canManage"
@@ -393,6 +446,7 @@ function statusClass(s) {
 
 // ── D1 карточка сотрудника ───────────────────────────────────────────
 const card = ref(null)
+const work = ref(null) // M10: «Контент» карточки — работа сотрудника (задачи/сделки/проекты)
 // K3: инлайн-смена должности прямо в карточке сотрудника
 const cardDesignation = ref('')
 const cardDesigNewMode = ref(false)
@@ -403,6 +457,15 @@ function openCard(e) {
   cardDesignation.value = e.designation || ''
   cardDesigNewMode.value = false
   cardDesigNew.value = ''
+  // M10: подгрузить работу сотрудника для правой зоны «Контент»
+  work.value = null
+  if (e.user_id) {
+    call('nacifrah.hr.get_employee_work', { user: e.user_id })
+      .then((w) => (work.value = w))
+      .catch(() => (work.value = { tasks: [], deals: [], projects: [] }))
+  } else {
+    work.value = { tasks: [], deals: [], projects: [] }
+  }
 }
 async function onCardDesignationChange(val) {
   cardDesignation.value = val
