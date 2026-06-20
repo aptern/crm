@@ -53,6 +53,13 @@ const routes = [
     component: () => import('@/pages/Team.vue'),
   },
   {
+    // Заход 86: модуль «Почта» (Яндекс-стиль)
+    alias: '/mail',
+    path: '/mail',
+    name: 'Mail',
+    component: () => import('@/pages/Mail.vue'),
+  },
+  {
     path: '/permissions',
     name: 'Permissions',
     component: () => import('@/pages/Permissions.vue'),

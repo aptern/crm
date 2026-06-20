@@ -485,6 +485,7 @@ const { users, isManager } = usersStore()
 // A1: перетаскивание кастом-пунктов меню, порядок сохраняется per-user (+ админ для всех).
 const _allCustomNav = [
   { id: 'Projects', label: 'Проекты', to: { name: 'Projects' }, icon: 'folder' },
+  { id: 'Mail', label: 'Почта', to: { name: 'Mail' }, icon: 'mail' },
   { id: 'KnowledgeBase', label: 'База знаний', to: { name: 'KnowledgeBase' }, icon: 'book-open' },
   // A1.2: блок «Воронки» — единый перетаскиваемый элемент среди пунктов меню
   { id: 'Funnels', isFunnelsBlock: true },
