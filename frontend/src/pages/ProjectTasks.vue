@@ -408,8 +408,7 @@
   </div>
 
   <!-- B19: диалог «Добавить этап» (этот проект / все проекты) -->
-  <Dialog v-model="stageDialog" :options="{ title: __('Добавить этап') }">
-    <template #body-content>
+  <SimpleModal v-model="stageDialog" :title="__('Добавить этап')">
       <div class="flex flex-col gap-3">
         <FormControl
           :label="__('Название этапа')"
@@ -464,12 +463,10 @@
         <Button :label="__('Отмена')" @click="stageDialog = false" />
         <Button variant="solid" :label="__('Добавить')" :loading="stageSaving" @click="saveStage" />
       </div>
-    </template>
-  </Dialog>
+  </SimpleModal>
 
   <!-- I16: переименование проекта -->
-  <Dialog v-model="renameDialog" :options="{ title: __('Переименовать проект') }">
-    <template #body-content>
+  <SimpleModal v-model="renameDialog" :title="__('Переименовать проект')">
       <div class="flex flex-col gap-2">
         <FormControl
           :label="__('Название проекта')"
@@ -485,12 +482,10 @@
         <Button :label="__('Отмена')" @click="renameDialog = false" />
         <Button variant="solid" :label="__('Сохранить')" :loading="renameSaving" @click="saveRename" />
       </div>
-    </template>
-  </Dialog>
+  </SimpleModal>
 
   <!-- M6(а): создание проекта вручную -->
-  <Dialog v-model="createDialog" :options="{ title: __('Создать проект') }">
-    <template #body-content>
+  <SimpleModal v-model="createDialog" :title="__('Создать проект')">
       <div class="flex flex-col gap-2">
         <FormControl
           :label="__('Название проекта')"
@@ -503,12 +498,10 @@
         <Button :label="__('Отмена')" @click="createDialog = false" />
         <Button variant="solid" :label="__('Создать')" :loading="createSaving" @click="saveCreateProject" />
       </div>
-    </template>
-  </Dialog>
+  </SimpleModal>
 
   <!-- I21: регулярные задачи -->
-  <Dialog v-model="recurDialog" :options="{ title: __('Регулярные задачи'), size: 'xl' }">
-    <template #body-content>
+  <SimpleModal v-model="recurDialog" :title="__('Регулярные задачи')" size="xl">
       <div class="flex flex-col gap-3">
         <!-- форма создания -->
         <div class="rounded-lg border border-outline-gray-2 p-3">
@@ -585,8 +578,7 @@
         </div>
         <div v-else class="text-sm text-ink-gray-5">{{ __('Пока нет регулярных задач.') }}</div>
       </div>
-    </template>
-  </Dialog>
+  </SimpleModal>
 
   <!-- M6(б): карточка проекта (слайд-овер) -->
   <ProjectCard v-model="cardOpen" :project="cardProject" :title="cardTitle" />
@@ -620,6 +612,7 @@ import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import { defaultDueDate } from '@/utils/dateUtils'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 import ConfirmModal from '@/components/ConfirmModal.vue'
+import SimpleModal from '@/components/SimpleModal.vue'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -627,7 +620,6 @@ import {
   TextEditor,
   Dropdown,
   FeatherIcon,
-  Dialog,
   FormControl,
   ErrorMessage,
   Popover,

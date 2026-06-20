@@ -214,44 +214,42 @@
   </Teleport>
 
   <!-- D3: увольнение + перенос сделок/лидов/задач -->
-  <Dialog v-model="showFire" :options="{ title: __('Уволить сотрудника') }">
-    <template #body-content>
-      <p class="text-sm text-ink-gray-7">
-        {{ __('Уволить «{0}»? Вход в систему будет отключён. На кого перенести его работу?', [card?.employee_name]) }}
-      </p>
-      <div class="mt-3 flex flex-col gap-3">
-        <FormControl
-          type="select"
-          :label="__('Лиды → перенести на')"
-          :options="heirOptions"
-          v-model="fireReassign.lead"
-        />
-        <FormControl
-          type="select"
-          :label="__('Сделки и проекты → перенести на')"
-          :options="heirOptions"
-          v-model="fireReassign.deal"
-        />
-        <FormControl
-          type="select"
-          :label="__('Задачи → перенести на')"
-          :options="heirOptions"
-          v-model="fireReassign.task"
-        />
-        <ErrorMessage v-if="fireError" :message="fireError" />
-      </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <Button :label="__('Отмена')" @click="showFire = false" />
-        <Button
-          variant="solid"
-          theme="red"
-          :label="__('Уволить и перенести')"
-          :loading="firing"
-          @click="doFire"
-        />
-      </div>
-    </template>
-  </Dialog>
+  <SimpleModal v-model="showFire" :title="__('Уволить сотрудника')">
+    <p class="text-sm text-ink-gray-7">
+      {{ __('Уволить «{0}»? Вход в систему будет отключён. На кого перенести его работу?', [card?.employee_name]) }}
+    </p>
+    <div class="mt-3 flex flex-col gap-3">
+      <FormControl
+        type="select"
+        :label="__('Лиды → перенести на')"
+        :options="heirOptions"
+        v-model="fireReassign.lead"
+      />
+      <FormControl
+        type="select"
+        :label="__('Сделки и проекты → перенести на')"
+        :options="heirOptions"
+        v-model="fireReassign.deal"
+      />
+      <FormControl
+        type="select"
+        :label="__('Задачи → перенести на')"
+        :options="heirOptions"
+        v-model="fireReassign.task"
+      />
+      <ErrorMessage v-if="fireError" :message="fireError" />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <Button :label="__('Отмена')" @click="showFire = false" />
+      <Button
+        variant="solid"
+        theme="red"
+        :label="__('Уволить и перенести')"
+        :loading="firing"
+        @click="doFire"
+      />
+    </div>
+  </SimpleModal>
 
   <PhotoCropDialog
     v-model="showPhoto"
@@ -259,12 +257,10 @@
     @cropped="onCropped"
   />
 
-  <Dialog v-model="showHire" :options="{ size: 'lg' }">
-    <template #body>
-      <!-- M3: Enter нанимает (кроме textarea) -->
-      <div class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6" @keydown.enter="onEnterHire">
-        <h3 class="mb-4 text-xl font-semibold text-ink-gray-9">{{ __('Нанять сотрудника') }}</h3>
-        <div class="flex flex-col gap-3">
+  <SimpleModal v-model="showHire" :title="__('Нанять сотрудника')" size="lg">
+    <!-- M3: Enter нанимает (кроме textarea) -->
+    <div @keydown.enter="onEnterHire">
+      <div class="flex flex-col gap-3">
           <!-- M9: ФИО тремя полями; в системе показываем «Имя Фамилия» -->
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FormControl :label="__('Фамилия')" v-model="form.last_name" :placeholder="__('Петров')" />
@@ -320,9 +316,8 @@
           />
           <Button :label="__('Отмена')" @click="showHire = false" />
         </div>
-      </div>
-    </template>
-  </Dialog>
+    </div>
+  </SimpleModal>
 
   <ConfirmModal :state="confirmState" />
 </template>
@@ -336,7 +331,6 @@ import { formatPhoneDisplay } from '@/utils/ruFormat'
 import {
   Avatar,
   Button,
-  Dialog,
   FormControl,
   ErrorMessage,
   FeatherIcon,
@@ -347,6 +341,7 @@ import {
 import { reactive, ref, computed, watch, onMounted } from 'vue'
 import { usersStore } from '@/stores/users'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
+import SimpleModal from '@/components/SimpleModal.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const { isManager, isAdmin } = usersStore()
