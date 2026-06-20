@@ -584,6 +584,14 @@
   <ProjectCard v-model="cardOpen" :project="cardProject" :title="cardTitle" />
 
   <ConfirmModal :state="confirmState" />
+
+  <!-- P3: единый попап создания задачи (обычная/регулярная) -->
+  <TaskCreateModal
+    v-model="taskCreateOpen"
+    :project="taskCreateProject"
+    :stage="taskCreateStage"
+    @created="onTaskCreated"
+  />
 </template>
 
 <script setup>
@@ -613,6 +621,7 @@ import { defaultDueDate } from '@/utils/dateUtils'
 import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import SimpleModal from '@/components/SimpleModal.vue'
+import TaskCreateModal from '@/components/TaskCreateModal.vue'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -1222,31 +1231,25 @@ function showTask(name) {
 }
 
 // Дедлайн по умолчанию (B9): сегодня + 2 рабочих дня (выходные пропускаем).
+// P3: единый кастомный попап создания задачи (с галочкой «Регулярная»). Проект обязателен.
+const taskCreateOpen = ref(false)
+const taskCreateProject = ref('')
+const taskCreateStage = ref('')
 function createTask(column) {
   const project = route.params.projectId || selected.value[0]
-  const defaults = {
-    status: 'Backlog',
-    priority: 'Medium',
-    due_date: defaultDueDate(),
-    reference_doctype: 'CRM Deal',
-    reference_docname: project,
-    nacifrah_project: project, // M6(в): пред-заполняем поле «Проект» из контекста
+  if (!project) {
+    toast.error(__('Выберите проект слева, чтобы создать задачу'))
+    return
   }
-
-  if (column?.column?.name) {
-    let column_field = tasks.value.params.column_field
-    if (column_field) {
-      defaults[column_field] = column.column.name
-    }
-  }
-
-  showModal({
-    doctype: 'CRM Task',
-    title: 'Task',
-    defaults: defaults,
-    callbacks: taskCallbacks,
-    popup: true, // I22: создание задачи — центральный попап
-  })
+  taskCreateProject.value = project
+  // этап только из колонки этапного вида (в виде «по сроку» колонка — корзина, read-only)
+  taskCreateStage.value =
+    groupBy.value === 'stage' && column?.column?.name ? column.column.name : ''
+  taskCreateOpen.value = true
+}
+function onTaskCreated() {
+  tasks.value?.reload?.()
+  cardMetaResource?.reload?.()
 }
 
 function actions(name) {
