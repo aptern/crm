@@ -49,32 +49,49 @@
           <div ref="scrollEl" class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <div v-if="!data" class="text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
 
-            <!-- ЧАТ -->
+            <!-- ЧАТ (P1: комменты + файлы вместе; тумблер «только файлы») -->
             <template v-else-if="tab === 'chat'">
-              <div v-if="data.comments.length" class="flex flex-col gap-3">
-                <FeedItem v-for="it in data.comments" :key="it.key" :item="it" />
-              </div>
-              <div v-else class="text-sm text-ink-gray-5">{{ __('Пока нет сообщений') }}</div>
-            </template>
-
-            <!-- ФАЙЛЫ -->
-            <template v-else-if="tab === 'files'">
-              <div v-if="data.files.length" class="flex flex-col gap-1.5">
-                <a
-                  v-for="f in data.files"
-                  :key="f.name"
-                  :href="f.file_url"
-                  target="_blank"
-                  class="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-gray-1"
+              <div class="mb-3 flex justify-end">
+                <button
+                  class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition"
+                  :class="
+                    filesOnly
+                      ? 'bg-surface-gray-3 text-ink-gray-8'
+                      : 'text-ink-gray-5 hover:text-ink-gray-7'
+                  "
+                  @click="filesOnly = !filesOnly"
                 >
-                  <FeatherIcon name="paperclip" class="h-4 w-4 shrink-0 text-ink-gray-5" />
-                  <span class="flex-1 truncate text-ink-gray-8">{{ f.file_name }}</span>
-                  <span class="shrink-0 text-xs text-ink-gray-4">
-                    {{ f.doctype === 'CRM Task' ? __('задача') : __('проект') }}
-                  </span>
-                </a>
+                  <FeatherIcon name="paperclip" class="h-3.5 w-3.5" />
+                  {{ __('Только файлы') }}
+                  <span v-if="data.files.length" class="text-ink-gray-4">{{ data.files.length }}</span>
+                </button>
               </div>
-              <div v-else class="text-sm text-ink-gray-5">{{ __('Файлов пока нет') }}</div>
+              <!-- режим «только файлы» -->
+              <template v-if="filesOnly">
+                <div v-if="data.files.length" class="flex flex-col gap-1.5">
+                  <a
+                    v-for="f in data.files"
+                    :key="f.name"
+                    :href="f.file_url"
+                    target="_blank"
+                    class="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-gray-1"
+                  >
+                    <FeatherIcon name="paperclip" class="h-4 w-4 shrink-0 text-ink-gray-5" />
+                    <span class="flex-1 truncate text-ink-gray-8">{{ f.file_name }}</span>
+                    <span class="shrink-0 text-xs text-ink-gray-4">
+                      {{ f.doctype === 'CRM Task' ? __('задача') : __('проект') }}
+                    </span>
+                  </a>
+                </div>
+                <div v-else class="text-sm text-ink-gray-5">{{ __('Файлов пока нет') }}</div>
+              </template>
+              <!-- обычный чат (комменты; файлы-сообщения тоже здесь) -->
+              <template v-else>
+                <div v-if="data.comments.length" class="flex flex-col gap-3">
+                  <FeedItem v-for="it in data.comments" :key="it.key" :item="it" />
+                </div>
+                <div v-else class="text-sm text-ink-gray-5">{{ __('Пока нет сообщений') }}</div>
+              </template>
             </template>
 
             <!-- АКТИВНОСТЬ -->
@@ -86,7 +103,7 @@
             </template>
           </div>
 
-          <!-- Ввод (Чат) / Загрузка (Файлы) -->
+          <!-- Ввод чата: текст + прикрепить файл (P1: файлы кидаем прямо в чат) -->
           <div v-if="tab === 'chat'" class="shrink-0 border-t border-outline-gray-1 p-4">
             <textarea
               v-model="newComment"
@@ -95,19 +112,23 @@
               :placeholder="__('Написать сообщение по проекту…')"
               @keydown.enter.exact.prevent="send"
             />
-            <div class="mt-2 flex justify-end">
+            <div class="mt-2 flex items-center justify-between">
+              <FileUploader
+                :upload-args="{ doctype: 'CRM Deal', docname: project, private: true }"
+                @success="onChatFileUpload"
+              >
+                <template #default="{ openFileSelector, uploading }">
+                  <Button
+                    variant="ghost"
+                    icon="paperclip"
+                    :loading="uploading"
+                    :tooltip="__('Прикрепить файл')"
+                    @click="openFileSelector()"
+                  />
+                </template>
+              </FileUploader>
               <Button variant="solid" :label="__('Отправить')" :loading="sending" :disabled="!newComment.trim()" @click="send" />
             </div>
-          </div>
-          <div v-else-if="tab === 'files'" class="shrink-0 border-t border-outline-gray-1 p-4">
-            <FileUploader
-              :upload-args="{ doctype: 'CRM Deal', docname: project, private: true }"
-              @success="onUploaded"
-            >
-              <template #default="{ openFileSelector }">
-                <Button variant="subtle" iconLeft="upload" :label="__('Загрузить файл')" @click="openFileSelector()" />
-              </template>
-            </FileUploader>
           </div>
         </div>
       </div>
@@ -177,11 +198,12 @@ const overview = createResource({
   },
 })
 
+// P1: «Файлы» больше не отдельная вкладка — файлы внутри «Чат» (тумблер «только файлы»).
 const tabs = computed(() => [
   { key: 'chat', label: __('Чат'), count: data.value?.comments?.length || 0 },
-  { key: 'files', label: __('Файлы'), count: data.value?.files?.length || 0 },
   { key: 'activity', label: __('Активность'), count: data.value?.activity?.length || 0 },
 ])
+const filesOnly = ref(false)
 
 function scrollToBottom() {
   const el = scrollEl.value
@@ -222,7 +244,19 @@ async function send() {
   }
 }
 
-function onUploaded() {
+// P1: загруженный в чате файл сразу появляется сообщением со ссылкой (и в «только файлы»)
+async function onChatFileUpload(file) {
+  const url = file?.file_url || ''
+  const name = (file?.file_name || __('файл')).replace(/</g, '&lt;')
+  try {
+    await call('crm.api.comment.add_comment', {
+      reference_doctype: 'CRM Deal',
+      reference_name: props.project,
+      content: `<p>📎 <a href="${url}" target="_blank">${name}</a></p>`,
+    })
+  } catch (e) {
+    // файл уже прикреплён к проекту — будет виден в «только файлы» даже без коммента
+  }
   toast.success(__('Файл загружен'))
   overview.reload()
 }
