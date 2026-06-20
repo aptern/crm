@@ -34,6 +34,12 @@
         />
       </div>
       <FormControl
+        type="select"
+        :label="__('Исполнитель')"
+        :options="assigneeOptions"
+        v-model="f.assignee"
+      />
+      <FormControl
         type="textarea"
         :label="__('Описание')"
         v-model="f.description"
@@ -93,6 +99,13 @@ import { napi } from '@/utils/api'
 import SimpleModal from '@/components/SimpleModal.vue'
 import { PRIORITY_ORDER, PRIORITY_LABELS } from '@/utils/taskPriority'
 import { defaultDueDate } from '@/utils/dateUtils'
+import { usersStore } from '@/stores/users'
+
+const { crmUsers } = usersStore()
+const assigneeOptions = computed(() => [
+  { value: '', label: '—' },
+  ...(crmUsers.value || []).map((u) => ({ value: u.name, label: u.full_name || u.name })),
+])
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -126,6 +139,7 @@ function blank() {
     title: '',
     priority: 'Medium',
     due_date: defaultDueDate(),
+    assignee: '',
     description: '',
     recurring: false,
     frequency: 'Weekdays',
@@ -163,6 +177,7 @@ async function submit() {
         frequency: f.frequency,
         project: props.project,
         priority: f.priority,
+        assigned_to: f.assignee || undefined,
         weekday: f.weekday,
         day_of_month: f.day_of_month,
         due_in_days: f.due_in_days,
@@ -176,6 +191,7 @@ async function submit() {
           status: 'Backlog',
           priority: f.priority,
           due_date: f.due_date || null,
+          assigned_to: f.assignee || undefined,
           nacifrah_stage: props.stage || undefined,
           reference_doctype: 'CRM Deal',
           reference_docname: props.project,
