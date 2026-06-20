@@ -179,12 +179,10 @@ import {
 } from 'frappe-ui'
 import { reactive, ref, onMounted } from 'vue'
 import { parseColor } from '@/utils'
+import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import Draggable from 'vuedraggable'
 
-const PALETTE = [
-  'gray', 'blue', 'green', 'orange', 'red', 'purple',
-  'pink', 'teal', 'cyan', 'yellow', 'violet', 'amber',
-]
+const PALETTE = STAGE_COLOR_PALETTE
 const ICON_SET = [
   'filter', 'briefcase', 'user-plus', 'users', 'target', 'trending-up',
   'dollar-sign', 'shopping-cart', 'phone', 'mail', 'star', 'flag',

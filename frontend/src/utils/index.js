@@ -33,6 +33,11 @@ export function formatTime(seconds) {
   return formattedTime.trim()
 }
 
+// Маски отображения даты задачи (единый источник — правило централизации заказчика).
+// Тянут: карточка задачи (TaskArea) и список задач (TasksListView) — не копируют.
+export const TASK_DATETIME_FORMAT = 'ddd, MMM D, YYYY | hh:mm a' // полный (тултип)
+export const TASK_DATE_SHORT_FORMAT = 'D MMM, hh:mm a' // короткий (инлайн)
+
 export function formatDate(date, format, onlyDate = false, onlyTime = false) {
   if (!date) return ''
   format = getFormat(date, format, onlyDate, onlyTime, false)

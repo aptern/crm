@@ -40,11 +40,11 @@
       doctype="CRM Task"
     >
       <div v-if="column.key === 'due_date' && item">
-        <Tooltip :text="item && formatDate(item, 'ddd, MMM D, YYYY | hh:mm a')">
+        <Tooltip :text="item && formatDate(item, TASK_DATETIME_FORMAT)">
           <div class="flex items-center gap-2 truncate text-base">
             <div><CalendarIcon /></div>
             <div class="truncate">
-              {{ formatDate(item, 'D MMM, hh:mm a') }}
+              {{ formatDate(item, TASK_DATE_SHORT_FORMAT) }}
             </div>
           </div>
         </Tooltip>
@@ -193,6 +193,8 @@ import {
   isTranslatable,
   formatDuration,
   sanitizeHTML,
+  TASK_DATETIME_FORMAT,
+  TASK_DATE_SHORT_FORMAT,
 } from '@/utils'
 import {
   Avatar,

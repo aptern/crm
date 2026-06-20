@@ -613,6 +613,7 @@ import { storeToRefs } from 'pinia'
 import { formatDate, timeAgo } from '@/utils'
 // M6(д): приоритеты задачи — единый источник (общий с попапом создания)
 import { PRIORITY_LABELS, PRIORITY_CHIP, PRIORITY_ORDER } from '@/utils/taskPriority'
+import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -732,11 +733,8 @@ const projectKanbanColumns = computed(() => {
   )
 })
 
-// Диалог «Добавить этап» (со scope: этот проект / все)
-const STAGE_PALETTE = [
-  'gray', 'blue', 'green', 'orange', 'red', 'purple',
-  'pink', 'teal', 'cyan', 'yellow', 'violet', 'amber',
-]
+// Диалог «Добавить этап» (со scope: этот проект / все) — палитра из @/utils/colors
+const STAGE_PALETTE = STAGE_COLOR_PALETTE
 const stageDialog = ref(false)
 const stageForm = ref({ label: '', color: 'blue', scope: 'project' })
 const stageErr = ref('')
