@@ -616,6 +616,7 @@ import { formatDate, timeAgo } from '@/utils'
 import { PRIORITY_LABELS, PRIORITY_CHIP, PRIORITY_ORDER } from '@/utils/taskPriority'
 import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import { defaultDueDate } from '@/utils/dateUtils'
+import { useRealtimeRefresh } from '@/composables/useRealtimeRefresh'
 import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
 import {
   Tooltip,
@@ -670,6 +671,8 @@ const projects = createResource({
 
 const selected = ref([])
 const initialized = ref(false)
+// live: проект = CRM Deal; создал/удалил/переименовал → список проектов слева без F5
+useRealtimeRefresh(['CRM Deal'], () => projects.reload())
 const showHistory = ref(false)
 
 const allSelected = computed(

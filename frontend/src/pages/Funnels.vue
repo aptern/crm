@@ -182,9 +182,11 @@ import { reactive, ref, onMounted } from 'vue'
 import { parseColor } from '@/utils'
 import { STAGE_COLOR_PALETTE } from '@/utils/colors'
 import { useBroadcast } from '@/composables/useBroadcast.js'
+import { statusesStore } from '@/stores/statuses'
 import Draggable from 'vuedraggable'
 
 const { send } = useBroadcast()
+const { dealStatuses, leadStatuses } = statusesStore()
 
 const PALETTE = STAGE_COLOR_PALETTE
 const ICON_SET = [
@@ -283,6 +285,10 @@ async function run(fn) {
   busy.value = true
   try {
     await fn()
+    // live: правка этапа (цвет/тип/имя/порядок) → доска Сделок/Лидов берёт колонки из
+    // statusesStore; перечитываем его, чтобы доска показала изменения без F5.
+    dealStatuses.reload()
+    leadStatuses.reload()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Ошибка'))
   } finally {
