@@ -1,7 +1,7 @@
 <template>
   <!-- A4/B11: крупные сущности (создание/деталь задачи и др.) выезжают справа панелью,
-       50% ширины, на всю высоту, скролл внутри, тоггл «на весь экран» (до левого меню),
-       клик по фону — закрыть. -->
+       DETAIL_PANEL_WIDTH (F1=80%) ширины, на всю высоту, скролл внутри, тоггл «на весь экран»
+       (до левого меню), клик по фону — закрыть. -->
   <Teleport to="body">
     <Transition name="so-overlay">
       <div v-if="show" class="fixed inset-0 z-40">
@@ -22,7 +22,7 @@
                       ? '100%'
                       : fullscreen
                         ? 'calc(100% - 15rem)'
-                        : '50%',
+                        : DETAIL_PANEL_WIDTH,
                   }
             "
           >
@@ -133,7 +133,7 @@ import { useDocument } from '@/data/document'
 import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
-import { isMobileView } from '@/composables/settings'
+import { isMobileView, DETAIL_PANEL_WIDTH } from '@/composables/settings'
 import { setupCustomizations } from '@/utils'
 import { call, createResource, toast } from 'frappe-ui'
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
@@ -150,7 +150,7 @@ const props = defineProps({
 
 const show = defineModel({ type: Boolean })
 
-// B11: «на весь экран» (до левого меню) ↔ 50%. Сбрасываем при закрытии.
+// B11: «на весь экран» (до левого меню) ↔ DETAIL_PANEL_WIDTH (F1=80%). Сбрасываем при закрытии.
 const fullscreen = ref(false)
 watch(show, (v) => {
   if (!v) fullscreen.value = false

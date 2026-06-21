@@ -16,7 +16,7 @@
                 ? '100%'
                 : fullscreen
                   ? 'calc(100% - 15rem)'
-                  : '50%',
+                  : DETAIL_PANEL_WIDTH,
             }"
           >
             <div
@@ -80,7 +80,7 @@
 import { computed, defineAsyncComponent, ref, watch, onErrorCaptured } from 'vue'
 import { Button } from 'frappe-ui'
 import { useRoute, useRouter } from 'vue-router'
-import { isMobileView } from '@/composables/settings'
+import { isMobileView, DETAIL_PANEL_WIDTH } from '@/composables/settings'
 import { recordSlideOverStore } from '@/stores/recordSlideOver'
 
 const Deal = defineAsyncComponent(() => import('@/pages/Deal.vue'))
@@ -100,7 +100,7 @@ const compProps = computed(() =>
 // Защитный барьер: если встроенная карточка падает при рендере — показываем
 // fallback с кнопкой «Открыть на странице», оверлей не ломает приложение.
 const renderError = ref(false)
-// I29(c): по умолчанию 50%, тоггл «на весь экран» (до левого меню). Сброс при закрытии.
+// I29(c): по умолчанию DETAIL_PANEL_WIDTH (F1=80%), тоггл «на весь экран» (до левого меню). Сброс при закрытии.
 const fullscreen = ref(false)
 onErrorCaptured(() => {
   renderError.value = true

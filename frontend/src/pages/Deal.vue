@@ -37,25 +37,35 @@
     </template>
   </LayoutHeader>
   <div v-if="doc.name" class="flex h-full overflow-hidden">
-    <Tabs
-      v-model="tabIndex"
-      as="div"
-      :tabs="tabs"
-      class="flex flex-1 overflow-hidden flex-col [&_[role='tab']]:px-0 [&_[role='tab']]:shrink-0 [&_[role='tablist']]:px-5 [&_[role='tablist']::-webkit-scrollbar]:h-0 [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:gap-7.5 [&_[role='tabpanel']:not([hidden])]:flex [&_[role='tabpanel']:not([hidden])]:grow"
-    >
-      <template #tab-panel>
-        <Activities
-          ref="activities"
-          v-model:reload="reload"
-          v-model:tabIndex="tabIndex"
-          doctype="CRM Deal"
-          :docname="dealId"
-          :tabs="tabs"
-          @beforeSave="beforeStatusChange"
-          @afterSave="reloadResources"
-        />
-      </template>
-    </Tabs>
+    <div class="flex flex-1 flex-col overflow-hidden">
+      <!-- F4 (P-D11 + P-REF): бар этапов ТЕКУЩЕЙ воронки сверху + перенос в воронку.
+           Клик по этапу → set_deal_stage; перенос → move_deal_to_funnel (nacifrah.crm_bridge).
+           currentStage прокидываем для оптимистичной подсветки; @changed → reload карточки. -->
+      <DealStageBar
+        :deal="dealId"
+        :current-stage="doc.nacifrah_funnel_stage || doc.status"
+        @changed="onStageBarChanged"
+      />
+      <Tabs
+        v-model="tabIndex"
+        as="div"
+        :tabs="tabs"
+        class="flex flex-1 overflow-hidden flex-col [&_[role='tab']]:px-0 [&_[role='tab']]:shrink-0 [&_[role='tablist']]:px-5 [&_[role='tablist']::-webkit-scrollbar]:h-0 [&_[role='tablist']]:min-h-[45px] [&_[role='tablist']]:gap-7.5 [&_[role='tabpanel']:not([hidden])]:flex [&_[role='tabpanel']:not([hidden])]:grow"
+      >
+        <template #tab-panel>
+          <Activities
+            ref="activities"
+            v-model:reload="reload"
+            v-model:tabIndex="tabIndex"
+            doctype="CRM Deal"
+            :docname="dealId"
+            :tabs="tabs"
+            @beforeSave="beforeStatusChange"
+            @afterSave="reloadResources"
+          />
+        </template>
+      </Tabs>
+    </div>
     <Resizer side="right" class="flex flex-col justify-between border-l">
       <div
         class="flex h-[45px] cursor-copy items-center border-b px-5 py-2.5 text-lg font-medium text-ink-gray-9"
@@ -365,6 +375,7 @@ import ContactModal from '@/components/Modals/ContactModal.vue'
 import Link from '@/components/Controls/Link.vue'
 import Section from '@/components/Section.vue'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
+import DealStageBar from '@/components/DealStageBar.vue'
 import SLASection from '@/components/SLASection.vue'
 import CustomActions from '@/components/CustomActions.vue'
 import {
@@ -830,5 +841,13 @@ function reloadResources(data) {
   ) {
     sections.reload()
   }
+}
+
+// F4: после смены этапа/переноса воронки (DealStageBar) — перечитать сам документ
+// (бэкенд мог поменять status/nacifrah_funnel/nacifrah_funnel_stage + won→project)
+// и боковые секции, чтобы шапка/поля карточки отразили новое состояние.
+function onStageBarChanged() {
+  document.reload?.()
+  sections.reload()
 }
 </script>
