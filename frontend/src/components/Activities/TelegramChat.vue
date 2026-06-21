@@ -9,7 +9,7 @@
     <div class="min-h-0 flex-1 overflow-y-auto py-4">
       <div v-if="loading" class="text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
       <div v-else-if="!messages.length" class="py-10 text-center text-sm text-ink-gray-4">
-        {{ __('Переписки в Telegram пока нет') }}
+        {{ __('Переписки в мессенджерах пока нет') }}
       </div>
       <div v-else class="flex flex-col gap-2">
         <div
@@ -23,7 +23,10 @@
             :class="m.sent_or_received === 'Sent' ? 'bg-surface-gray-4 text-ink-gray-9' : 'bg-surface-gray-2 text-ink-gray-8'"
           >
             <div class="prose-sm max-w-none" v-html="m.content" />
-            <div class="mt-0.5 text-right text-xs text-ink-gray-4">{{ timeAgo(m.creation) }}</div>
+            <div class="mt-0.5 flex items-center justify-end gap-1.5 text-xs text-ink-gray-4">
+              <span v-if="m.nacifrah_channel" class="rounded bg-surface-gray-3 px-1 text-[10px] uppercase">{{ m.nacifrah_channel }}</span>
+              {{ timeAgo(m.creation) }}
+            </div>
           </div>
         </div>
       </div>
@@ -33,7 +36,7 @@
         <textarea
           v-model="draft"
           rows="1"
-          :placeholder="__('Сообщение в Telegram…')"
+          :placeholder="__('Сообщение клиенту…')"
           class="max-h-32 min-h-[38px] flex-1 resize-none rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-2 text-sm"
           @keydown.enter.exact.prevent="send"
         />
@@ -83,7 +86,7 @@ async function send() {
   err.value = ''
   sending.value = true
   try {
-    await call(napi('telegram.send_message'), {
+    await call(napi('telegram.send_any_message'), {
       reference_doctype: props.doctype,
       reference_name: props.docname,
       text,
@@ -91,7 +94,7 @@ async function send() {
     draft.value = ''
     await load()
   } catch (e) {
-    err.value = e?.messages?.[0] || __('Не удалось отправить (настроен ли Telegram-бот и прокси?)')
+    err.value = e?.messages?.[0] || __('Не удалось отправить (проверь подключение мессенджера)')
     toast.error(err.value)
   } finally {
     sending.value = false

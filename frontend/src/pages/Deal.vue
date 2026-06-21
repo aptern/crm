@@ -607,7 +607,7 @@ const tabs = computed(() => {
     },
     {
       name: 'Telegram',
-      label: 'Telegram',
+      label: __('Мессенджеры'),
       icon: TelegramIcon,
     },
   ]
