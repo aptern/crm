@@ -269,6 +269,16 @@
           </label>
         </div>
       </div>
+      <!-- P-E1: бейдж подзадач N/M (рядом с чек-листом). Открытие задачи → блок «Подзадачи». -->
+      <div
+        v-if="metaFor(itemName).sub_total"
+        class="flex items-center gap-1 text-xs text-ink-gray-5"
+        :title="__('Подзадачи')"
+        @click.stop
+      >
+        <FeatherIcon name="git-branch" class="h-3 w-3" />
+        {{ metaFor(itemName).sub_done }}/{{ metaFor(itemName).sub_total }}
+      </div>
       </div>
     </template>
     <template #fields="{ fieldName, itemName }">
@@ -552,6 +562,26 @@
                 :label="__('Число')"
                 v-model="recurForm.day_of_month"
               />
+            </div>
+            <!-- PB5: мультивыбор конкретных дней недели Пн…Вс -->
+            <div v-if="recurForm.frequency === 'Weekly Multi'" class="flex flex-col gap-1.5">
+              <div class="text-xs text-ink-gray-5">{{ __('Дни недели') }}</div>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="d in recurWeekdayChips"
+                  :key="d.value"
+                  type="button"
+                  class="rounded-md border px-2.5 py-1 text-sm transition"
+                  :class="
+                    recurForm.weekdays.includes(d.value)
+                      ? 'border-outline-gray-3 bg-surface-gray-3 text-ink-gray-9 font-medium'
+                      : 'border-outline-gray-2 text-ink-gray-6 hover:bg-surface-gray-2'
+                  "
+                  @click="toggleRecurWeekday(d.value)"
+                >
+                  {{ d.label }}
+                </button>
+              </div>
               <FormControl
                 class="w-28"
                 type="select"
@@ -1352,6 +1382,7 @@ const recurForm = ref({
   task_title: '',
   frequency: 'Weekdays',
   weekday: 1,
+  weekdays: [],
   day_of_month: 1,
   due_in_days: 0,
   priority: 'Medium',
@@ -1360,8 +1391,25 @@ const recurFreqOptions = [
   { value: 'Daily', label: 'Каждый день' },
   { value: 'Weekdays', label: 'Только будни (Пн–Пт)' },
   { value: 'Weekly', label: 'Раз в неделю' },
+  { value: 'Weekly Multi', label: 'По дням недели (выбрать)' },
   { value: 'Monthly', label: 'Раз в месяц' },
 ]
+// PB5: чипы для мультивыбора дней (Пн=1 … Вс=7)
+const recurWeekdayChips = [
+  { value: 1, label: 'Пн' },
+  { value: 2, label: 'Вт' },
+  { value: 3, label: 'Ср' },
+  { value: 4, label: 'Чт' },
+  { value: 5, label: 'Пт' },
+  { value: 6, label: 'Сб' },
+  { value: 7, label: 'Вс' },
+]
+function toggleRecurWeekday(d) {
+  const arr = recurForm.value.weekdays
+  const i = arr.indexOf(d)
+  if (i === -1) arr.push(d)
+  else arr.splice(i, 1)
+}
 function recurFreqLabel(fr) {
   return recurFreqOptions.find((o) => o.value === fr)?.label || fr
 }
@@ -1380,6 +1428,7 @@ function openRecurDialog() {
     task_title: '',
     frequency: 'Weekdays',
     weekday: 1,
+    weekdays: [],
     day_of_month: 1,
     due_in_days: 0,
     priority: 'Medium',
@@ -1399,6 +1448,11 @@ async function createRecur() {
     recurErr.value = __('Выберите ОДИН проект слева — регулярная задача привязывается к проекту')
     return
   }
+  // PB5: для режима «По дням недели» нужен хотя бы один выбранный день
+  if (recurForm.value.frequency === 'Weekly Multi' && !recurForm.value.weekdays.length) {
+    recurErr.value = __('Выберите хотя бы один день недели')
+    return
+  }
   recurSaving.value = true
   try {
     await call(napi('automation.create_recurring_task'), {
@@ -1407,6 +1461,7 @@ async function createRecur() {
       project: proj,
       priority: recurForm.value.priority,
       weekday: recurForm.value.weekday,
+      weekdays: JSON.stringify(recurForm.value.weekdays),
       day_of_month: recurForm.value.day_of_month,
       due_in_days: recurForm.value.due_in_days,
     })

@@ -77,6 +77,12 @@
                   :data="doc"
                   :doctype="doctype"
                 />
+                <!-- P-E1/P-E2: подзадачи + связанные задачи (под полями задачи) -->
+                <TaskRelations
+                  v-if="isTaskDetail"
+                  :task="doc.name"
+                  @open="(n) => $emit('openTask', n)"
+                />
                 <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
               </div>
               <div
@@ -93,6 +99,11 @@
                 :doctype="doctype"
               />
               <ErrorMessage v-if="error" class="mt-4" :message="__(error)" />
+              <TaskRelations
+                v-if="isTaskDetail"
+                :task="doc.name"
+                @open="(n) => $emit('openTask', n)"
+              />
               <TaskActivityFeed v-if="isTaskDetail" :task="doc.name" />
             </div>
             <div class="shrink-0 border-t border-outline-gray-1 px-6 py-4">
@@ -117,6 +128,7 @@ import EditIcon from '@/components/Icons/EditIcon.vue'
 import FieldLayout from '@/components/FieldLayout/FieldLayout.vue'
 import CustomActions from '@/components/CustomActions.vue'
 import TaskActivityFeed from '@/components/TaskActivityFeed.vue'
+import TaskRelations from '@/components/TaskRelations.vue'
 import { useDocument } from '@/data/document'
 import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
@@ -144,7 +156,7 @@ watch(show, (v) => {
   if (!v) fullscreen.value = false
 })
 
-const emit = defineEmits(['afterInsert', 'afterUpdate'])
+const emit = defineEmits(['afterInsert', 'afterUpdate', 'openTask'])
 
 const router = useRouter()
 

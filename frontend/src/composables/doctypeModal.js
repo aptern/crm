@@ -38,6 +38,7 @@ export function useDoctypeModal() {
     title,
     defaults,
     popup,
+    callbacks,
     showModal,
     triggerCallback,
   }

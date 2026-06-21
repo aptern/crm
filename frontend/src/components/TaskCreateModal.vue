@@ -67,6 +67,26 @@
           :options="weekdayOptions"
           v-model="f.weekday"
         />
+        <!-- PB5: мультивыбор конкретных дней недели Пн…Вс -->
+        <div v-if="f.frequency === 'Weekly Multi'" class="flex flex-col gap-1.5">
+          <div class="text-xs text-ink-gray-5">{{ __('Дни недели') }}</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="d in weekdayChips"
+              :key="d.value"
+              type="button"
+              class="rounded-md border px-2.5 py-1 text-sm transition"
+              :class="
+                f.weekdays.includes(d.value)
+                  ? 'border-outline-gray-3 bg-surface-gray-3 text-ink-gray-9 font-medium'
+                  : 'border-outline-gray-2 text-ink-gray-6 hover:bg-surface-gray-2'
+              "
+              @click="toggleWeekday(d.value)"
+            >
+              {{ d.label }}
+            </button>
+          </div>
+        </div>
         <FormControl
           v-if="f.frequency === 'Monthly'"
           type="number"
@@ -124,6 +144,7 @@ const freqOptions = [
   { value: 'Daily', label: __('Ежедневно') },
   { value: 'Weekdays', label: __('Только будни (Пн–Пт)') },
   { value: 'Weekly', label: __('Еженедельно') },
+  { value: 'Weekly Multi', label: __('По дням недели (выбрать)') },
   { value: 'Monthly', label: __('Ежемесячно') },
 ]
 const weekdayOptions = [
@@ -133,6 +154,21 @@ const weekdayOptions = [
   { value: 4, label: __('Четверг') },
   { value: 5, label: __('Пятница') },
 ]
+// PB5: чипы для мультивыбора дней (Пн=1 … Вс=7)
+const weekdayChips = [
+  { value: 1, label: __('Пн') },
+  { value: 2, label: __('Вт') },
+  { value: 3, label: __('Ср') },
+  { value: 4, label: __('Чт') },
+  { value: 5, label: __('Пт') },
+  { value: 6, label: __('Сб') },
+  { value: 7, label: __('Вс') },
+]
+function toggleWeekday(d) {
+  const i = f.weekdays.indexOf(d)
+  if (i === -1) f.weekdays.push(d)
+  else f.weekdays.splice(i, 1)
+}
 
 function blank() {
   return {
@@ -144,6 +180,7 @@ function blank() {
     recurring: false,
     frequency: 'Weekdays',
     weekday: 1,
+    weekdays: [],
     day_of_month: 1,
     due_in_days: 0,
   }
@@ -169,6 +206,11 @@ async function submit() {
     err.value = __('Не выбран проект')
     return
   }
+  // PB5: для режима «По дням недели» нужен хотя бы один выбранный день
+  if (f.recurring && f.frequency === 'Weekly Multi' && !f.weekdays.length) {
+    err.value = __('Выберите хотя бы один день недели')
+    return
+  }
   saving.value = true
   try {
     if (f.recurring) {
@@ -179,6 +221,7 @@ async function submit() {
         priority: f.priority,
         assigned_to: f.assignee || undefined,
         weekday: f.weekday,
+        weekdays: JSON.stringify(f.weekdays),
         day_of_month: f.day_of_month,
         due_in_days: f.due_in_days,
       })
