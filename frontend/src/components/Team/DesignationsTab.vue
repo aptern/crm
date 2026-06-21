@@ -217,7 +217,16 @@ function removeDesig(name) {
 async function confirmDelete() {
   deleting.value = true
   try {
-    await call(napi('hr.delete_designation'), { designation: delTarget.value })
+    // PB2: бэкенд может вернуть {ok:false, message} (должность ещё используется) —
+    // показываем причину, а не молча «закрываем и обновляем».
+    const r = await call(napi('hr.delete_designation'), {
+      designation: delTarget.value,
+    })
+    if (r && r.ok === false) {
+      toast.error(r.message || __('Нельзя удалить: должность используется'))
+      await load()
+      return
+    }
     showDelete.value = false
     await load()
   } catch (e) {

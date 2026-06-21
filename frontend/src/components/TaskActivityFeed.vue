@@ -131,6 +131,28 @@
       </div>
     </div>
 
+    <!-- PB1: список вложений задачи (под лентой, на вкладке «Чат») -->
+    <div
+      v-if="tab === 'chat' && attachedFiles.length"
+      class="mt-3 shrink-0 border-t border-outline-gray-1 pt-2"
+    >
+      <div class="mb-1 text-xs font-medium text-ink-gray-5">
+        {{ __('Вложения') }} ({{ attachedFiles.length }})
+      </div>
+      <div class="flex flex-col gap-1">
+        <a
+          v-for="f in attachedFiles"
+          :key="f.name"
+          :href="f.file_url"
+          target="_blank"
+          class="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-surface-gray-1"
+        >
+          <FeatherIcon name="paperclip" class="h-3.5 w-3.5 shrink-0 text-ink-gray-5" />
+          <span class="flex-1 truncate text-ink-gray-8">{{ f.file_name }}</span>
+        </a>
+      </div>
+    </div>
+
     <!-- ВВОД (только на вкладке «Чат» — «писать отдельно») -->
     <div v-if="tab === 'chat'" class="mt-3 flex shrink-0 flex-col gap-2">
       <!-- B16: чат задачи — расширенный ввод с @упоминанием участников.
@@ -148,7 +170,26 @@
           @change="newComment = $event"
         />
       </div>
-      <div class="flex justify-end">
+      <div class="flex items-center justify-between">
+        <!-- PB1: прикрепить файл к задаче (как в карточке проекта) -->
+        <FileUploader
+          :upload-args="{
+            doctype: 'CRM Task',
+            docname: task,
+            private: true,
+          }"
+          @success="onChatFileUpload"
+        >
+          <template #default="{ openFileSelector, uploading }">
+            <Button
+              variant="ghost"
+              icon="paperclip"
+              :loading="uploading"
+              :tooltip="__('Прикрепить файл')"
+              @click="openFileSelector()"
+            />
+          </template>
+        </FileUploader>
         <Button
           variant="solid"
           :label="__('Отправить')"
@@ -167,6 +208,8 @@ import { napi } from '@/utils/api'
 import {
   Avatar,
   Button,
+  FeatherIcon,
+  FileUploader,
   Popover,
   TextEditor,
   createResource,
@@ -259,9 +302,18 @@ const activity = createResource({
   },
 })
 
+// PB1: get_task_activity теперь отдаёт {items, files}. Старый билд ждал голый список —
+// поддерживаем оба вида ответа (массив ИЛИ {items}).
+const activityItems = computed(() =>
+  Array.isArray(activity.data) ? activity.data : activity.data?.items || [],
+)
+const attachedFiles = computed(() =>
+  Array.isArray(activity.data) ? [] : activity.data?.files || [],
+)
+
 // M4: свежие снизу — сортируем по времени по возрастанию; «Чат» = только комментарии
 const displayedItems = computed(() => {
-  const items = [...(activity.data || [])]
+  const items = [...activityItems.value]
   const filtered = tab.value === 'chat' ? items.filter((i) => i.type === 'comment') : items
   return filtered.sort((a, b) => (a.creation < b.creation ? -1 : a.creation > b.creation ? 1 : 0))
 })
@@ -291,20 +343,51 @@ function onEnterKey(e) {
 async function send() {
   if (!hasContent.value) return
   sending.value = true
+  // PB1: отправка коммента — отдельный try. Если add_comment упал — показываем ошибку
+  // отправки. Если упали ТОЛЬКО reload-ы (лента/наблюдатели) — коммент уже сохранён,
+  // поэтому их ошибку глотаем (await внутри try, чтобы их 500 не всплыл глобальным
+  // тостом и не маскировал успех «ложным Internal Server Error»).
   try {
     await call('crm.api.comment.add_comment', {
       reference_doctype: 'CRM Task',
       reference_name: props.task,
       content: newComment.value,
     })
-    newComment.value = ''
-    commentEditor.value?.editor?.commands?.clearContent(true)
-    activity.reload()
-    watchers.reload()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось отправить сообщение'))
+    sending.value = false
+    return
+  }
+  newComment.value = ''
+  commentEditor.value?.editor?.commands?.clearContent(true)
+  try {
+    await activity.reload()
+    await watchers.reload()
+  } catch (e) {
+    // коммент сохранён; обновление ленты/наблюдателей не удалось — не пугаем юзера 500
   } finally {
     sending.value = false
+  }
+}
+
+// PB1: загруженный файл сразу появляется сообщением со ссылкой (и в списке вложений)
+async function onChatFileUpload(file) {
+  const url = file?.file_url || ''
+  const name = (file?.file_name || __('файл')).replace(/</g, '&lt;')
+  try {
+    await call('crm.api.comment.add_comment', {
+      reference_doctype: 'CRM Task',
+      reference_name: props.task,
+      content: `<p>📎 <a href="${url}" target="_blank">${name}</a></p>`,
+    })
+  } catch (e) {
+    // файл уже прикреплён к задаче — будет виден в списке вложений даже без коммента
+  }
+  toast.success(__('Файл загружен'))
+  try {
+    await activity.reload()
+  } catch (e) {
+    /* лента обновится при следующем открытии */
   }
 }
 </script>

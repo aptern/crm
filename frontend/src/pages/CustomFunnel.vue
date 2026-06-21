@@ -6,8 +6,12 @@
 <template>
   <LayoutHeader>
     <template #left-header>
+      <!-- PB6: единый переключатель видов (Список/Канбан/Группировать) как у «Сделок»
+           через <ViewBreadcrumbs>. Иконка+имя воронки оставлены справа для идентификации. -->
       <div class="flex items-center gap-2">
         <FeatherIcon :name="funnelIcon || 'filter'" class="h-5 w-5 text-ink-gray-6" />
+        <ViewBreadcrumbs v-model="viewControls" routeName="CustomFunnel" />
+        <span class="text-ink-gray-4">/</span>
         <div class="text-lg font-semibold text-ink-gray-8">
           {{ funnelName || funnel }}
         </div>
@@ -38,12 +42,11 @@
     :allowedViews="['list', 'group_by', 'kanban']"
     defaultColumnField="nacifrah_funnel_stage"
     :kanbanColumns="funnelKanbanColumns"
-    :noViewPersist="true"
     :getRoute="
       (row) => ({
         name: 'Deal',
         params: { dealId: row.name },
-        query: { viewType: 'kanban' },
+        query: { view: route.query.view, viewType: route.params.viewType },
       })
     "
     :onNewClick="onNewClick"
@@ -65,6 +68,7 @@
 
 <script setup>
 import LayoutHeader from '@/components/LayoutHeader.vue'
+import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
 import { napi } from '@/utils/api'
 import CustomActions from '@/components/CustomActions.vue'
 import { DEFAULT_CARD_KANBAN_FIELDS } from '@/utils/cardFields'

@@ -153,7 +153,11 @@
         v-model="showHistory"
         :project="selected[0]"
       />
+      <!-- PB3: гейт готовности — не монтируем ViewControls (и не запрашиваем доску),
+           пока проекты не загружены И (для канбана «По этапам») не пришли колонки.
+           Иначе борд «По этапам» монтируется без колонок → пустой. -->
       <ViewControls
+        v-if="boardReady"
         :key="selectionKey"
         ref="viewControls"
         v-model="tasks"
@@ -229,18 +233,23 @@
           <FeatherIcon name="check-square" class="h-3 w-3" />
           {{ metaFor(itemName).cl_done }}/{{ metaFor(itemName).cl_total }}
           <FeatherIcon
-            :name="openChecklists.has(itemName) ? 'chevron-up' : 'chevron-down'"
+            :name="isChecklistOpen(itemName) ? 'chevron-up' : 'chevron-down'"
             class="h-3 w-3"
           />
         </button>
         <div
-          v-if="openChecklists.has(itemName)"
+          v-if="isChecklistOpen(itemName)"
           class="mt-1 flex flex-col gap-0.5"
         >
+          <!-- PB4: пусто vs ошибка — различаем (не глушим ошибку в «Нет данных») -->
           <div
-            v-if="!checklistItems(itemName).length"
+            v-if="checklistError(itemName)"
+            class="text-ink-red-4 px-1"
+          >{{ __('Не удалось загрузить чек-лист') }}</div>
+          <div
+            v-else-if="!checklistItems(itemName).length"
             class="text-ink-gray-4 px-1"
-          >…</div>
+          >{{ __('Загрузка…') }}</div>
           <label
             v-for="it in checklistItems(itemName)"
             :key="it.name"
@@ -719,16 +728,32 @@ const selectionKey = computed(
     ':' +
     boardNonce.value,
 )
+// PB3: гейт готовности борда. Монтируем ViewControls только когда проекты загружены
+// И (в канбане «По этапам») пришли колонки. Без этого канбан «По этапам» успевает
+// смонтироваться раньше get_stage_columns → пустой борд.
+const boardReady = computed(() => {
+  // проекты загружены = ресурс отработал хотя бы раз (data — массив, даже пустой)
+  if (!Array.isArray(projects.data)) return false
+  const needStageColumns =
+    route.params.viewType === 'kanban' && groupBy.value === 'stage'
+  return needStageColumns ? stageColumnsLoaded.value : true
+})
 
 // B19: пер-проектные этапы (колонки). Карта всех колонок (глобальные + пер-проектные)
 // грузится один раз; для одиночного проекта показываем глобальные + его кастомные,
 // чужие пер-проектные скрыты. Передаём явный kanban_columns в ViewControls (опционально).
 const allStageColumns = ref([])
+const stageColumnsLoaded = ref(false)
 async function loadStageColumns() {
   try {
     allStageColumns.value = (await call(napi('project_columns.get_stage_columns'))) || []
   } catch (e) {
     allStageColumns.value = []
+  } finally {
+    // PB3: помечаем готовность и бампаем nonce → ViewControls ремоунтится ПОСЛЕ
+    // прихода колонок (иначе канбан монтируется без колонок = пустой борд «По этапам»)
+    stageColumnsLoaded.value = true
+    boardNonce.value++
   }
 }
 onMounted(loadStageColumns)
@@ -1112,17 +1137,35 @@ function metaFor(name) {
 }
 
 // --- Чек-лист на борде (B6): раскрытие, ленивая загрузка пунктов, переключение галочки ---
+// PB4: ключи ВЕЗДЕ нормализованы к String(name) (CRM Task.name может быть int) —
+// иначе тоггл/has не совпадают с meta и панель не раскрывается. Ошибка загрузки
+// больше НЕ маскируется пустым списком — показываем «не удалось загрузить».
 const openChecklists = ref(new Set())
 const checklistData = ref({})
+const checklistErrors = ref({})
 function checklistItems(name) {
   return checklistData.value[String(name)] || []
 }
+function isChecklistOpen(name) {
+  return openChecklists.value.has(String(name))
+}
+function checklistError(name) {
+  return !!checklistErrors.value[String(name)]
+}
 async function loadChecklist(name) {
+  const key = String(name)
   try {
-    const data = await call(napi('tasks_api.get_task_checklist'), { task: name })
-    checklistData.value = { ...checklistData.value, [String(name)]: data || [] }
+    const data = await call(napi('tasks_api.get_task_checklist'), { task: key })
+    checklistData.value = { ...checklistData.value, [key]: data || [] }
+    if (checklistErrors.value[key]) {
+      const e = { ...checklistErrors.value }
+      delete e[key]
+      checklistErrors.value = e
+    }
   } catch (e) {
-    checklistData.value = { ...checklistData.value, [String(name)]: [] }
+    // PB4: НЕ глушим в [] — помечаем ошибку, чтобы UI показал её, а не «Нет данных»
+    checklistErrors.value = { ...checklistErrors.value, [key]: true }
+    toast.error(e?.messages?.[0] || __('Не удалось загрузить чек-лист'))
   }
 }
 function toggleChecklist(name) {
@@ -1132,7 +1175,8 @@ function toggleChecklist(name) {
     s.delete(key)
   } else {
     s.add(key)
-    if (!checklistData.value[key]) loadChecklist(name)
+    // перезагружаем, если данных ещё нет ИЛИ прошлая попытка завершилась ошибкой
+    if (!checklistData.value[key] || checklistErrors.value[key]) loadChecklist(name)
   }
   openChecklists.value = s
 }
