@@ -10,6 +10,19 @@
     :whatsappBox="whatsappBox"
     :modalRef="modalRef"
   />
+  <!-- PB10: фильтры ленты «только вложения / только ссылки» (общий компонент),
+       на вкладках Активность/Комментарии -->
+  <div
+    v-if="['Activity', 'Comments'].includes(title)"
+    class="mx-4 -mt-1 mb-2 flex justify-end sm:mx-10"
+  >
+    <FeedFilterChips
+      v-model:filesOnly="filesOnly"
+      v-model:linksOnly="linksOnly"
+      :filesCount="attachmentCount"
+      :linksCount="linkCount"
+    />
+  </div>
   <FadedScrollableDiv class="flex flex-col h-full overflow-y-auto">
     <div
       v-if="all_activities?.loading"
@@ -489,6 +502,8 @@ import CommunicationArea from '@/components/CommunicationArea.vue'
 import WhatsappTemplateSelectorModal from '@/components/Modals/WhatsappTemplateSelectorModal.vue'
 import AllModals from '@/components/Activities/AllModals.vue'
 import FilesUploader from '@/components/FilesUploader/FilesUploader.vue'
+import FeedFilterChips from '@/components/FeedFilterChips.vue'
+import { useFeedFilters } from '@/composables/useFeedFilters'
 import { timeAgo, formatDate, startCase } from '@/utils'
 import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
@@ -535,6 +550,17 @@ const modalRef = ref(null)
 const showFilesUploader = ref(false)
 
 const title = computed(() => props.tabs?.[tabIndex.value]?.name || 'Activity')
+
+// PB10: общий источник фильтров «вложения/ссылки» для лент Активность/Комментарии
+const {
+  filesOnly,
+  linksOnly,
+  reset: resetFilters,
+  itemHasAttachment,
+  itemHasLink,
+} = useFeedFilters()
+// сбрасываем фильтры при переключении вкладок, чтобы режим не «прилипал»
+watch(title, () => resetFilters())
 
 const changeTabTo = (tabName) => {
   const tabNames = props.tabs?.map((tab) => tab.name?.toLowerCase())
@@ -674,8 +700,34 @@ const activities = computed(() => {
       })
     }
   })
-  return sortByCreation(_activities)
+  // PB10: применяем фильтры «только вложения / только ссылки» (Активность/Комментарии)
+  return sortByCreation(applyFeedFilters(_activities))
 })
+
+// PB10: фильтрация ленты по выбранному режиму (общие детекторы из useFeedFilters)
+function applyFeedFilters(list) {
+  if (!['Activity', 'Comments'].includes(title.value)) return list
+  if (filesOnly.value) return list.filter((a) => itemHasAttachment(a))
+  if (linksOnly.value) return list.filter((a) => itemHasLink(a))
+  return list
+}
+
+// PB10: счётчики для чипов — по нефильтрованному набору текущей вкладки
+const baseActivities = computed(() => {
+  if (title.value == 'Comments') {
+    return (all_activities.data?.versions || []).filter(
+      (a) => a.activity_type === 'comment',
+    )
+  }
+  if (title.value == 'Activity') return get_activities()
+  return []
+})
+const attachmentCount = computed(
+  () => baseActivities.value.filter((a) => itemHasAttachment(a)).length,
+)
+const linkCount = computed(
+  () => baseActivities.value.filter((a) => itemHasLink(a)).length,
+)
 
 function sortByCreation(list) {
   return list.sort((a, b) => new Date(a.creation) - new Date(b.creation))

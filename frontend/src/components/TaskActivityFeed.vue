@@ -87,13 +87,39 @@
       </div>
     </div>
 
+    <!-- PB7/PB8: фильтры ленты «только вложения / только ссылки» (общий компонент) -->
+    <div :class="embedded ? 'shrink-0' : ''" class="mb-2 flex justify-end">
+      <FeedFilterChips
+        v-model:filesOnly="filesOnly"
+        v-model:linksOnly="linksOnly"
+        :filesCount="attachedFiles.length"
+        :linksCount="linkItems.length"
+      />
+    </div>
+
     <!-- ЛЕНТА (скролл; свежие снизу) -->
     <div
       ref="feedEl"
       class="flex flex-col gap-3 pr-1"
       :class="embedded ? 'min-h-0 flex-1 overflow-y-auto' : 'max-h-72 overflow-y-auto'"
     >
-      <template v-if="displayedItems.length">
+      <!-- режим «только вложения»: серверный список файлов задачи -->
+      <template v-if="filesOnly">
+        <a
+          v-for="f in attachedFiles"
+          :key="f.name"
+          :href="f.file_url"
+          target="_blank"
+          class="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-gray-1"
+        >
+          <FeatherIcon name="paperclip" class="h-4 w-4 shrink-0 text-ink-gray-5" />
+          <span class="flex-1 truncate text-ink-gray-8">{{ f.file_name }}</span>
+        </a>
+        <div v-if="!attachedFiles.length" class="text-sm text-ink-gray-5">
+          {{ __('Вложений пока нет') }}
+        </div>
+      </template>
+      <template v-else-if="displayedItems.length">
         <div
           v-for="item in displayedItems"
           :key="item.type + '-' + item.key"
@@ -127,13 +153,20 @@
         </div>
       </template>
       <div v-else-if="activity.data" class="text-sm text-ink-gray-5">
-        {{ tab === 'chat' ? __('Пока нет сообщений') : __('Пока нет активности по работе') }}
+        {{
+          linksOnly
+            ? __('Сообщений со ссылками нет')
+            : tab === 'chat'
+              ? __('Пока нет сообщений')
+              : __('Пока нет активности по работе')
+        }}
       </div>
     </div>
 
-    <!-- PB1: список вложений задачи (под лентой, на вкладке «Чат») -->
+    <!-- PB1: список вложений задачи (под лентой, на вкладке «Чат»).
+         PB7: в режиме «только вложения» список уже показан в самой ленте — не дублируем. -->
     <div
-      v-if="tab === 'chat' && attachedFiles.length"
+      v-if="tab === 'chat' && attachedFiles.length && !filesOnly"
       class="mt-3 shrink-0 border-t border-outline-gray-1 pt-2"
     >
       <div class="mb-1 text-xs font-medium text-ink-gray-5">
@@ -218,11 +251,16 @@ import {
 } from 'frappe-ui'
 import { timeAgo } from '@/utils'
 import { usersStore } from '@/stores/users'
+import FeedFilterChips from '@/components/FeedFilterChips.vue'
+import { useFeedFilters } from '@/composables/useFeedFilters'
 
 const props = defineProps({
   task: { type: String, required: true },
   embedded: { type: Boolean, default: false },
 })
+
+// PB7/PB8: общий источник фильтров «вложения/ссылки»
+const { filesOnly, linksOnly, itemHasLink } = useFeedFilters()
 
 const { getUser, users: usersList } = usersStore()
 const newComment = ref('')
@@ -314,8 +352,17 @@ const attachedFiles = computed(() =>
 // M4: свежие снизу — сортируем по времени по возрастанию; «Чат» = только комментарии
 const displayedItems = computed(() => {
   const items = [...activityItems.value]
-  const filtered = tab.value === 'chat' ? items.filter((i) => i.type === 'comment') : items
+  let filtered = tab.value === 'chat' ? items.filter((i) => i.type === 'comment') : items
+  // PB8: режим «только ссылки» — оставляем сообщения, где детектор нашёл URL
+  if (linksOnly.value) filtered = filtered.filter((i) => itemHasLink(i))
   return filtered.sort((a, b) => (a.creation < b.creation ? -1 : a.creation > b.creation ? 1 : 0))
+})
+
+// PB8: счётчик сообщений со ссылками (для чипа) — по текущей вкладке
+const linkItems = computed(() => {
+  const items = activityItems.value
+  const base = tab.value === 'chat' ? items.filter((i) => i.type === 'comment') : items
+  return base.filter((i) => itemHasLink(i))
 })
 
 // M4: автоскролл ленты вниз (к свежим)

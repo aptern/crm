@@ -49,22 +49,16 @@
           <div ref="scrollEl" class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <div v-if="!data" class="text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
 
-            <!-- ЧАТ (P1: комменты + файлы вместе; тумблер «только файлы») -->
+            <!-- ЧАТ (P1: комменты + файлы вместе; PB8: тумблеры «вложения / ссылки») -->
             <template v-else-if="tab === 'chat'">
+              <!-- PB8: общий блок чипов фильтров (тот же, что в задаче/активности) -->
               <div class="mb-3 flex justify-end">
-                <button
-                  class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition"
-                  :class="
-                    filesOnly
-                      ? 'bg-surface-gray-3 text-ink-gray-8'
-                      : 'text-ink-gray-5 hover:text-ink-gray-7'
-                  "
-                  @click="filesOnly = !filesOnly"
-                >
-                  <FeatherIcon name="paperclip" class="h-3.5 w-3.5" />
-                  {{ __('Только файлы') }}
-                  <span v-if="data.files.length" class="text-ink-gray-4">{{ data.files.length }}</span>
-                </button>
+                <FeedFilterChips
+                  v-model:filesOnly="filesOnly"
+                  v-model:linksOnly="linksOnly"
+                  :filesCount="data.files.length"
+                  :linksCount="linkComments.length"
+                />
               </div>
               <!-- режим «только файлы» -->
               <template v-if="filesOnly">
@@ -85,12 +79,14 @@
                 </div>
                 <div v-else class="text-sm text-ink-gray-5">{{ __('Файлов пока нет') }}</div>
               </template>
-              <!-- обычный чат (комменты; файлы-сообщения тоже здесь) -->
+              <!-- обычный чат (комменты; PB8: при linksOnly — только сообщения со ссылками) -->
               <template v-else>
-                <div v-if="data.comments.length" class="flex flex-col gap-3">
-                  <FeedItem v-for="it in data.comments" :key="it.key" :item="it" />
+                <div v-if="visibleComments.length" class="flex flex-col gap-3">
+                  <FeedItem v-for="it in visibleComments" :key="it.key" :item="it" />
                 </div>
-                <div v-else class="text-sm text-ink-gray-5">{{ __('Пока нет сообщений') }}</div>
+                <div v-else class="text-sm text-ink-gray-5">
+                  {{ linksOnly ? __('Сообщений со ссылками нет') : __('Пока нет сообщений') }}
+                </div>
               </template>
             </template>
 
@@ -142,6 +138,8 @@ import { napi } from '@/utils/api'
 import { Avatar, Button, FeatherIcon, FileUploader, createResource, call, toast } from 'frappe-ui'
 import { timeAgo } from '@/utils'
 import { usersStore } from '@/stores/users'
+import FeedFilterChips from '@/components/FeedFilterChips.vue'
+import { useFeedFilters } from '@/composables/useFeedFilters'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -203,7 +201,16 @@ const tabs = computed(() => [
   { key: 'chat', label: __('Чат'), count: data.value?.comments?.length || 0 },
   { key: 'activity', label: __('Активность'), count: data.value?.activity?.length || 0 },
 ])
-const filesOnly = ref(false)
+// PB8: общий источник фильтров «вложения/ссылки» (как в задаче и активности)
+const { filesOnly, linksOnly, reset: resetFilters, itemHasLink } = useFeedFilters()
+
+// PB8: комменты со ссылками (детект URL общим хелпером) + список под текущий режим
+const linkComments = computed(() =>
+  (data.value?.comments || []).filter((it) => itemHasLink(it)),
+)
+const visibleComments = computed(() =>
+  linksOnly.value ? linkComments.value : data.value?.comments || [],
+)
 
 function scrollToBottom() {
   const el = scrollEl.value
@@ -215,6 +222,7 @@ watch(
     if (v && props.project) {
       data.value = null
       tab.value = 'chat'
+      resetFilters()
       overview.reload()
     }
   },
