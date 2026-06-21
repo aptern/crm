@@ -293,5 +293,3 @@ async function onMoveClick(f, st, close) {
   border-left: 9px solid transparent;
 }
 </style>
-</content>
-</invoke>
