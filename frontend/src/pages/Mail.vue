@@ -44,8 +44,18 @@
         </button>
 
         <div class="mt-3 px-2 py-1 text-xs font-medium uppercase text-ink-gray-4">{{ __('Папки') }}</div>
+        <!-- Псевдо-папка «Важное» (поиск по \Flagged, не IMAP-папка) -->
         <button
-          v-for="f in folders"
+          class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition"
+          :class="folder === FLAGGED_KEY ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-7 hover:bg-surface-gray-1'"
+          @click="selectFolder(FLAGGED_KEY)"
+        >
+          <FeatherIcon name="flag" class="h-4 w-4 shrink-0 text-amber-500" />
+          <span class="flex-1 truncate">{{ __('Важное') }}</span>
+        </button>
+        <!-- Системные папки -->
+        <button
+          v-for="f in systemFolders"
           :key="f.key"
           class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition"
           :class="f.key === folder ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-7 hover:bg-surface-gray-1'"
@@ -55,31 +65,115 @@
           <span class="flex-1 truncate">{{ f.label }}</span>
           <span v-if="f.unseen" class="rounded-full bg-surface-gray-5 px-1.5 text-xs text-ink-white">{{ f.unseen }}</span>
         </button>
+
+        <!-- Пользовательские папки -->
+        <div v-if="customFolders.length" class="mt-2 px-2 py-1 text-xs font-medium uppercase text-ink-gray-4">{{ __('Мои папки') }}</div>
+        <button
+          v-for="f in customFolders"
+          :key="f.key"
+          class="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition"
+          :class="f.key === folder ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-7 hover:bg-surface-gray-1'"
+          @click="selectFolder(f.key)"
+        >
+          <FeatherIcon :name="f.icon" class="h-4 w-4 shrink-0" />
+          <span class="flex-1 truncate">{{ f.label }}</span>
+          <span v-if="f.unseen" class="rounded-full bg-surface-gray-5 px-1.5 text-xs text-ink-white">{{ f.unseen }}</span>
+        </button>
+
+        <!-- Создать папку -->
+        <div v-if="newFolder.show" class="mt-2 flex items-center gap-1 px-1">
+          <input
+            ref="newFolderInput"
+            v-model="newFolder.name"
+            :placeholder="__('Имя папки')"
+            class="h-7 w-full rounded-md border border-outline-gray-2 bg-surface-gray-1 px-2 text-sm"
+            @keyup.enter="createFolder"
+            @keyup.esc="newFolder.show = false"
+          />
+          <Button variant="ghost" icon="check" :loading="newFolder.saving" @click="createFolder" />
+          <Button variant="ghost" icon="x" @click="newFolder.show = false" />
+        </div>
+        <button
+          v-else
+          class="mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-ink-gray-6 transition hover:bg-surface-gray-1"
+          @click="openNewFolder"
+        >
+          <FeatherIcon name="plus" class="h-4 w-4 shrink-0" />
+          <span class="flex-1 truncate">{{ __('Папка') }}</span>
+        </button>
       </aside>
 
       <!-- ЦЕНТР: список писем -->
       <section class="flex w-96 shrink-0 flex-col overflow-y-auto border-r border-outline-gray-1">
+        <!-- Тулбар массовых действий (виден при выборе) -->
+        <div
+          v-if="selectedUids.length"
+          class="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-outline-gray-1 bg-surface-white px-2 py-1.5"
+        >
+          <label class="flex items-center gap-1.5 pr-1 text-xs text-ink-gray-6">
+            <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+            {{ __('Выбрано') }}: {{ selectedUids.length }}
+          </label>
+          <Button variant="ghost" icon="check" :tooltip="__('Прочитано')" @click="bulkAction('mark_seen', { seen: 1 })" />
+          <Button variant="ghost" icon="mail" :tooltip="__('Непрочитано')" @click="bulkAction('mark_seen', { seen: 0 })" />
+          <Button variant="ghost" icon="flag" :tooltip="__('Флажок')" @click="bulkAction('flag_email', { flagged: 1 })" />
+          <Button variant="ghost" icon="x-circle" :tooltip="__('Снять флажок')" @click="bulkAction('flag_email', { flagged: 0 })" />
+          <Button variant="ghost" icon="alert-octagon" :tooltip="__('Спам')" @click="bulkAction('mark_spam', {})" />
+          <Button variant="ghost" icon="trash-2" :tooltip="__('Удалить')" @click="bulkAction('delete_email', {})" />
+          <div class="relative">
+            <Button variant="ghost" icon="folder" :tooltip="__('Переместить')" @click="moveMenu = !moveMenu" />
+            <div
+              v-if="moveMenu"
+              class="absolute right-0 top-9 z-20 max-h-60 w-44 overflow-y-auto rounded-md border border-outline-gray-2 bg-surface-white py-1 shadow-md"
+            >
+              <button
+                v-for="f in moveTargets"
+                :key="f.key"
+                class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink-gray-7 hover:bg-surface-gray-1"
+                @click="bulkAction('move_email', { target: f.key }); moveMenu = false"
+              >
+                <FeatherIcon :name="f.icon" class="h-4 w-4 shrink-0" />
+                <span class="flex-1 truncate">{{ f.label }}</span>
+              </button>
+              <div v-if="!moveTargets.length" class="px-3 py-1.5 text-xs text-ink-gray-4">{{ __('Нет папок') }}</div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="loadingList" class="p-4 text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
         <div v-else-if="!emails.length" class="p-4 text-sm text-ink-gray-5">{{ __('Писем нет') }}</div>
-        <button
+        <div
           v-for="e in emails"
           :key="e.uid"
-          class="flex flex-col gap-0.5 border-b border-outline-gray-1 px-3 py-2 text-left transition hover:bg-surface-gray-1"
+          class="flex items-center gap-2 border-b border-outline-gray-1 px-3 py-2 transition hover:bg-surface-gray-1"
           :class="{ 'bg-surface-gray-1': e.uid === current?.uid }"
-          @click="openEmail(e)"
         >
-          <div class="flex items-center justify-between gap-2">
-            <span class="truncate text-sm" :class="e.seen ? 'font-normal text-ink-gray-7' : 'font-semibold text-ink-gray-9'">
-              {{ isSentFolder ? (e.recipients || '—') : (e.sender || '—') }}
-            </span>
-            <span class="shrink-0 text-xs text-ink-gray-4">{{ shortDate(e.date) }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <span v-if="!e.seen && !isSentFolder" class="h-1.5 w-1.5 shrink-0 rounded-full bg-surface-gray-7" />
-            <span class="truncate text-sm" :class="e.seen ? 'text-ink-gray-6' : 'font-medium text-ink-gray-8'">{{ e.subject || __('(без темы)') }}</span>
-            <FeatherIcon v-if="e.has_attachment" name="paperclip" class="ml-auto h-3.5 w-3.5 shrink-0 text-ink-gray-4" />
-          </div>
-        </button>
+          <input
+            type="checkbox"
+            class="shrink-0"
+            :checked="isSel(e.uid)"
+            @click.stop="toggleSel(e.uid)"
+          />
+          <FeatherIcon
+            name="flag"
+            class="h-4 w-4 shrink-0 cursor-pointer"
+            :class="e.flagged ? 'text-amber-500 fill-amber-500' : 'text-ink-gray-3'"
+            @click.stop="toggleFlag(e)"
+          />
+          <button class="flex min-w-0 flex-1 flex-col gap-0.5 text-left" @click="openEmail(e)">
+            <div class="flex items-center justify-between gap-2">
+              <span class="truncate text-sm" :class="e.seen ? 'font-normal text-ink-gray-7' : 'font-semibold text-ink-gray-9'">
+                {{ isSentFolder ? (e.recipients || '—') : (e.sender || '—') }}
+              </span>
+              <span class="shrink-0 text-xs text-ink-gray-4">{{ shortDate(e.date) }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span v-if="!e.seen && !isSentFolder" class="h-1.5 w-1.5 shrink-0 rounded-full bg-surface-gray-7" />
+              <span class="truncate text-sm" :class="e.seen ? 'text-ink-gray-6' : 'font-medium text-ink-gray-8'">{{ e.subject || __('(без темы)') }}</span>
+              <FeatherIcon v-if="e.has_attachment" name="paperclip" class="ml-auto h-3.5 w-3.5 shrink-0 text-ink-gray-4" />
+            </div>
+          </button>
+        </div>
       </section>
 
       <!-- ПРАВО: чтение -->
@@ -94,6 +188,13 @@
               <div class="flex shrink-0 gap-1">
                 <Button variant="ghost" icon="corner-up-left" :tooltip="__('Ответить')" @click="reply" />
                 <Button variant="ghost" icon="corner-up-right" :tooltip="__('Переслать')" @click="forward" />
+                <Button
+                  variant="ghost"
+                  icon="flag"
+                  :tooltip="current.flagged ? __('Снять флажок') : __('Флажок')"
+                  :class="current.flagged ? 'text-amber-500' : ''"
+                  @click="toggleCurrentFlag"
+                />
                 <Button variant="ghost" icon="trash-2" :tooltip="__('Удалить')" @click="removeEmail" />
               </div>
             </div>
@@ -167,7 +268,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { Button, FeatherIcon, FormControl, ErrorMessage, call, toast } from 'frappe-ui'
 import { napi } from '@/utils/api'
 import SimpleModal from '@/components/SimpleModal.vue'
@@ -175,6 +276,8 @@ import { usersStore } from '@/stores/users'
 
 const { isManager, crmUsers } = usersStore()
 const mailDomain = ref('nacifrah.ru')
+
+const FLAGGED_KEY = '__flagged__'
 
 const mailboxes = ref([])
 const currentBox = ref(null)
@@ -185,7 +288,39 @@ const current = ref(null)
 const search = ref('')
 const loadingList = ref(false)
 
+// Выбор писем (множество uid) + мини-меню «переместить» + создание папки
+const selected = ref(new Set())
+const moveMenu = ref(false)
+const newFolderInput = ref(null)
+const newFolder = reactive({ show: false, name: '', saving: false })
+
+// Реальная IMAP-папка для операций: псевдо-папка «Важное» → INBOX
+const effectiveFolder = computed(() => (folder.value === FLAGGED_KEY ? 'INBOX' : folder.value))
 const isSentFolder = computed(() => ['Sent', 'Drafts'].includes(folder.value))
+const systemFolders = computed(() => folders.value.filter((f) => f.system))
+const customFolders = computed(() => folders.value.filter((f) => !f.system))
+const selectedUids = computed(() => [...selected.value])
+const allSelected = computed(() => emails.value.length > 0 && selected.value.size === emails.value.length)
+// Папки-цели для перемещения: реальные IMAP-папки, кроме текущей (эффективной)
+const moveTargets = computed(() => folders.value.filter((f) => f.key !== effectiveFolder.value))
+
+function isSel(uid) {
+  return selected.value.has(String(uid))
+}
+function toggleSel(uid) {
+  const u = String(uid)
+  const s = new Set(selected.value)
+  if (s.has(u)) s.delete(u)
+  else s.add(u)
+  selected.value = s
+}
+function clearSel() {
+  selected.value = new Set()
+}
+function toggleSelectAll() {
+  if (allSelected.value) clearSel()
+  else selected.value = new Set(emails.value.map((e) => String(e.uid)))
+}
 const userOptions = computed(() =>
   (crmUsers?.value || []).map((u) => ({ value: u.name, label: u.full_name || u.name })),
 )
@@ -221,7 +356,7 @@ function bodyHtml(content) {
 function attachUrl(a) {
   const p = new URLSearchParams({
     email_account: currentBox.value.email_account,
-    folder: folder.value,
+    folder: effectiveFolder.value,
     uid: current.value.uid,
     index: a.index,
   })
@@ -247,11 +382,15 @@ async function loadEmails() {
   if (!currentBox.value) return
   loadingList.value = true
   current.value = null
+  clearSel()
+  const flaggedView = folder.value === FLAGGED_KEY
   try {
     emails.value =
       (await call(napi('mail_imap.get_emails'), {
         email_account: currentBox.value.email_account,
-        folder: folder.value,
+        // «Важное» — поиск по \Flagged в INBOX (бэк: only_flagged)
+        folder: flaggedView ? 'INBOX' : folder.value,
+        only_flagged: flaggedView ? 1 : 0,
         search: search.value || undefined,
       })) || []
   } catch (e) {
@@ -264,9 +403,11 @@ async function openEmail(e) {
   try {
     current.value = await call(napi('mail_imap.get_email'), {
       email_account: currentBox.value.email_account,
-      folder: folder.value,
+      folder: effectiveFolder.value,
       uid: e.uid,
     })
+    // перенести флаг из строки списка в открытое письмо (для кнопки-флажка)
+    current.value.flagged = e.flagged
     e.seen = 1
   } catch (err) {
     toast.error(err?.messages?.[0] || __('Не удалось открыть'))
@@ -274,17 +415,103 @@ async function openEmail(e) {
 }
 async function removeEmail() {
   if (!current.value) return
+  // один путь кода: delete_email со списком из одного uid
   try {
     await call(napi('mail_imap.delete_email'), {
       email_account: currentBox.value.email_account,
-      folder: folder.value,
-      uid: current.value.uid,
+      folder: effectiveFolder.value,
+      uids: JSON.stringify([current.value.uid]),
     })
     current.value = null
     loadEmails()
     loadFolders()
   } catch (e) {
     toast.error(e?.messages?.[0] || __('Не удалось удалить'))
+  }
+}
+
+// Общий хелпер массовых действий над выбранными письмами
+async function bulkAction(method, extra = {}) {
+  if (!selected.value.size) return
+  try {
+    await call(napi('mail_imap.' + method), {
+      email_account: currentBox.value.email_account,
+      folder: effectiveFolder.value,
+      uids: JSON.stringify(selectedUids.value),
+      ...extra,
+    })
+    clearSel()
+    current.value = null
+    loadEmails()
+    loadFolders() // обновить счётчики непрочитанных
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось выполнить действие'))
+  }
+}
+
+// Флажок в строке списка (оптимистично)
+async function toggleFlag(e) {
+  const next = e.flagged ? 0 : 1
+  e.flagged = next
+  if (current.value && current.value.uid === e.uid) current.value.flagged = next
+  try {
+    await call(napi('mail_imap.flag_email'), {
+      email_account: currentBox.value.email_account,
+      folder: effectiveFolder.value,
+      uids: JSON.stringify([e.uid]),
+      flagged: next,
+    })
+    loadFolders()
+  } catch (err) {
+    e.flagged = next ? 0 : 1 // откат
+    toast.error(err?.messages?.[0] || __('Не удалось изменить флажок'))
+  }
+}
+// Флажок в области чтения для открытого письма
+async function toggleCurrentFlag() {
+  if (!current.value) return
+  const row = emails.value.find((e) => String(e.uid) === String(current.value.uid))
+  if (row) await toggleFlag(row)
+  else {
+    const next = current.value.flagged ? 0 : 1
+    current.value.flagged = next
+    try {
+      await call(napi('mail_imap.flag_email'), {
+        email_account: currentBox.value.email_account,
+        folder: effectiveFolder.value,
+        uids: JSON.stringify([current.value.uid]),
+        flagged: next,
+      })
+    } catch (err) {
+      current.value.flagged = next ? 0 : 1
+      toast.error(err?.messages?.[0] || __('Не удалось изменить флажок'))
+    }
+  }
+}
+
+// Создание папки
+function openNewFolder() {
+  newFolder.show = true
+  newFolder.name = ''
+  nextTick(() => newFolderInput.value?.focus())
+}
+async function createFolder() {
+  const name = (newFolder.name || '').trim()
+  if (!name) return
+  newFolder.saving = true
+  try {
+    await call(napi('mail_imap.create_folder'), {
+      email_account: currentBox.value.email_account,
+      name,
+    })
+    newFolder.show = false
+    newFolder.name = ''
+    toast.success(__('Папка создана'))
+    loadFolders()
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось создать папку'))
+  } finally {
+    newFolder.saving = false
   }
 }
 async function selectBox(b) {
@@ -295,6 +522,8 @@ async function selectBox(b) {
 }
 function selectFolder(k) {
   folder.value = k
+  moveMenu.value = false
+  newFolder.show = false
   loadEmails()
 }
 

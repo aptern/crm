@@ -94,8 +94,16 @@
             v-if="card"
             class="absolute right-0 top-0 flex h-full w-full flex-col bg-surface-modal shadow-2xl sm:w-1/2"
           >
-            <!-- M10: слим-шапка (только закрыть) -->
-            <div class="flex shrink-0 items-center justify-end border-b border-outline-gray-1 px-4 py-2">
+            <!-- M10: слим-шапка (закрыть) + P-B5 карандаш режима правки -->
+            <div class="flex shrink-0 items-center justify-end gap-1 border-b border-outline-gray-1 px-4 py-2">
+              <Button
+                v-if="canManage && !editMode"
+                variant="ghost"
+                :title="__('Редактировать контакты')"
+                @click="startEdit"
+              >
+                <template #icon><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+              </Button>
               <Button variant="ghost" icon="x" @click="card = null" />
             </div>
             <!-- M10 (по уточнению заказчика): слева БОЛЬШОЕ КВАДРАТНОЕ ФОТО,
@@ -162,26 +170,138 @@
                     <dd class="text-ink-gray-8">{{ row.value || '—' }}</dd>
                   </div>
                 </dl>
-                <!-- I32: телефон сотрудника (менеджер может задать/изменить) -->
+                <!-- I32: основной телефон сотрудника -->
                 <div class="mt-3 flex items-start gap-2 text-sm">
                   <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">
                     {{ __('Телефон') }}
                   </div>
                   <div class="flex-1">
-                    <template v-if="canManage">
-                      <PhoneInput :value="card.cell_number" @change="(v) => (phoneEdit = v)" />
-                      <Button
-                        class="mt-1.5"
-                        size="sm"
-                        :label="__('Сохранить телефон')"
-                        :loading="savingPhone"
-                        @click="saveEmployeePhone"
-                      />
-                    </template>
-                    <span v-else class="text-ink-gray-8">{{
+                    <PhoneInput
+                      v-if="editMode"
+                      :value="edit.cell_number"
+                      @change="(v) => (edit.cell_number = v)"
+                    />
+                    <span v-else class="pt-1.5 text-ink-gray-8 block">{{
                       formatPhoneDisplay(card.cell_number) || '—'
                     }}</span>
                   </div>
+                </div>
+
+                <!-- P-B1: рабочая почта (read-only, заполняется провижинингом B2) -->
+                <div class="mt-3 flex items-start gap-2 text-sm">
+                  <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">
+                    {{ __('Рабочая почта') }}
+                  </div>
+                  <div class="flex-1 pt-1.5">
+                    <a
+                      v-if="card.nacifrah_company_email"
+                      :href="`mailto:${card.nacifrah_company_email}`"
+                      class="text-ink-blue-link hover:underline"
+                      >{{ card.nacifrah_company_email }}</a
+                    >
+                    <template v-else>
+                      <span class="text-ink-gray-5">{{ __('нет ящика') }}</span>
+                      <Button
+                        v-if="canManage"
+                        class="ml-2"
+                        size="sm"
+                        variant="subtle"
+                        :label="__('Создать почту')"
+                        :loading="provisioning"
+                        @click="provisionMailbox"
+                      />
+                    </template>
+                  </div>
+                </div>
+
+                <!-- P-B3: доп. телефон -->
+                <div class="mt-3 flex items-start gap-2 text-sm">
+                  <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">
+                    {{ __('Доп. телефон') }}
+                  </div>
+                  <div class="flex-1">
+                    <PhoneInput
+                      v-if="editMode"
+                      :value="edit.phone2"
+                      @change="(v) => (edit.phone2 = v)"
+                    />
+                    <span v-else class="pt-1.5 text-ink-gray-8 block">{{
+                      formatPhoneDisplay(card.nacifrah_phone2) || '—'
+                    }}</span>
+                  </div>
+                </div>
+
+                <!-- P-B4/B6: Telegram (логин + deep-link в чат) -->
+                <div class="mt-3 flex items-start gap-2 text-sm">
+                  <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">{{ __('Telegram') }}</div>
+                  <div class="flex-1">
+                    <FormControl
+                      v-if="editMode"
+                      type="text"
+                      :placeholder="__('@login')"
+                      v-model="edit.telegram"
+                    />
+                    <div v-else class="flex items-center gap-2 pt-1.5">
+                      <span class="text-ink-gray-8">{{
+                        card.nacifrah_telegram ? '@' + card.nacifrah_telegram : '—'
+                      }}</span>
+                      <a
+                        v-if="card.nacifrah_telegram"
+                        :href="`https://t.me/${card.nacifrah_telegram}`"
+                        target="_blank"
+                        rel="noopener"
+                        :title="__('Открыть чат в Telegram')"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3"
+                      >
+                        <FeatherIcon name="send" class="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- P-B4/B6: MAX (номер; deep-link не подтверждён → tel:/копирование, Q1) -->
+                <div class="mt-3 flex items-start gap-2 text-sm">
+                  <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">{{ __('MAX') }}</div>
+                  <div class="flex-1">
+                    <PhoneInput
+                      v-if="editMode"
+                      :value="edit.max_phone"
+                      @change="(v) => (edit.max_phone = v)"
+                    />
+                    <div v-else class="flex items-center gap-2 pt-1.5">
+                      <span class="text-ink-gray-8">{{
+                        formatPhoneDisplay(card.nacifrah_max_phone) || '—'
+                      }}</span>
+                      <a
+                        v-if="card.nacifrah_max_phone"
+                        :href="`tel:+${onlyDigits(card.nacifrah_max_phone)}`"
+                        :title="__('Позвонить')"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3"
+                      >
+                        <FeatherIcon name="phone" class="h-3.5 w-3.5" />
+                      </a>
+                      <button
+                        v-if="card.nacifrah_max_phone"
+                        type="button"
+                        :title="__('Скопировать номер')"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3"
+                        @click="copyMax"
+                      >
+                        <FeatherIcon name="copy" class="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- P-B5: панель «Сохранить»/«Отмена» в режиме правки -->
+                <div v-if="editMode" class="mt-4 flex gap-2">
+                  <Button
+                    variant="solid"
+                    :label="__('Сохранить')"
+                    :loading="savingContacts"
+                    @click="saveContacts"
+                  />
+                  <Button :label="__('Отмена')" @click="cancelEdit" />
                 </div>
               </div>
             </div>
@@ -407,10 +527,92 @@ const cardDesigNewMode = ref(false)
 const cardDesigNew = ref('')
 function openCard(e) {
   card.value = e
-  phoneEdit.value = null
+  editMode.value = false
   cardDesignation.value = e.designation || ''
   cardDesigNewMode.value = false
   cardDesigNew.value = ''
+}
+
+// P-B5: режим правки контактов (карандаш) + локальная копия (не мутируем card до save)
+const editMode = ref(false)
+const savingContacts = ref(false)
+const edit = reactive({ cell_number: '', phone2: '', telegram: '', max_phone: '' })
+function startEdit() {
+  const c = card.value || {}
+  edit.cell_number = c.cell_number || ''
+  edit.phone2 = c.nacifrah_phone2 || ''
+  edit.telegram = c.nacifrah_telegram || ''
+  // MAX по умолчанию = основной телефон, если ещё не задан (спека 3.2)
+  edit.max_phone = c.nacifrah_max_phone || c.cell_number || ''
+  editMode.value = true
+}
+function cancelEdit() {
+  editMode.value = false
+}
+function onlyDigits(s) {
+  return (s || '').toString().replace(/\D/g, '')
+}
+async function copyMax() {
+  try {
+    await navigator.clipboard.writeText('+' + onlyDigits(card.value?.nacifrah_max_phone))
+    toast.success(__('Номер скопирован'))
+  } catch (e) {
+    toast.error(__('Не удалось скопировать'))
+  }
+}
+async function saveContacts() {
+  if (!card.value?.name) return
+  savingContacts.value = true
+  try {
+    // основной телефон менялся — отдельный метод (как I32, обновляет и User.mobile_no)
+    if ((edit.cell_number || '') !== (card.value.cell_number || '')) {
+      await call(napi('hr.set_employee_phone'), {
+        employee: card.value.name,
+        user: card.value.user_id || null,
+        cell_number: edit.cell_number || '',
+      })
+    }
+    // P-B5: один батч-вызов для доп. контактов
+    await call(napi('hr.save_employee_contacts'), {
+      employee: card.value.name,
+      phone2: edit.phone2 || '',
+      telegram: edit.telegram || '',
+      max_phone: edit.max_phone || '',
+    })
+    editMode.value = false
+    await loadEmployees()
+    reopenCardByName(card.value.name)
+    toast.success(__('Контакты сохранены'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить контакты'))
+  } finally {
+    savingContacts.value = false
+  }
+}
+
+// P-B2: создать корпоративный ящик (read-only поле company_email пишет провижининг)
+const provisioning = ref(false)
+async function provisionMailbox() {
+  if (!card.value?.name) return
+  provisioning.value = true
+  try {
+    const res = await call(napi('hr.provision_employee_mailbox'), {
+      employee: card.value.name,
+    })
+    await loadEmployees()
+    reopenCardByName(card.value.name)
+    toast.success(__('Почта создана: {0}', [res?.address || '']))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось создать почту'))
+  } finally {
+    provisioning.value = false
+  }
+}
+
+// после loadEmployees карточка держит старый объект — переоткрываем свежей строкой
+function reopenCardByName(name) {
+  const fresh = (employeeList.value || []).find((x) => x.name === name)
+  if (fresh) card.value = fresh
 }
 async function onCardDesignationChange(val) {
   cardDesignation.value = val
@@ -445,28 +647,6 @@ async function applyCardDesignation(val) {
   }
 }
 
-// I32: правка телефона существующего сотрудника
-const phoneEdit = ref(null)
-const savingPhone = ref(false)
-async function saveEmployeePhone() {
-  if (!card.value?.name) return
-  savingPhone.value = true
-  try {
-    const val = phoneEdit.value ?? card.value.cell_number ?? ''
-    await call(napi('hr.set_employee_phone'), {
-      employee: card.value.name,
-      user: card.value.user_id || null,
-      cell_number: val,
-    })
-    card.value.cell_number = val
-    await loadEmployees()
-    toast.success(__('Телефон сохранён'))
-  } catch (e) {
-    toast.error(e?.messages?.[0] || __('Не удалось сохранить телефон'))
-  } finally {
-    savingPhone.value = false
-  }
-}
 const cardRows = computed(() => {
   const e = card.value || {}
   return [
@@ -608,8 +788,10 @@ const departments = createResource({
   auto: true,
 })
 // live: сотрудник/должность/отдел изменены где-угодно → обновляем список и справочники
-useRealtimeRefresh(['Employee', 'Designation', 'Department'], () => {
-  loadEmployees()
+useRealtimeRefresh(['Employee', 'Designation', 'Department'], async () => {
+  await loadEmployees()
+  // карточка открыта и не в режиме правки → подтянуть свежие контакты
+  if (card.value?.name && !editMode.value) reopenCardByName(card.value.name)
   designations.reload()
   departments.reload()
 })
