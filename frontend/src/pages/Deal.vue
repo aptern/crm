@@ -255,23 +255,106 @@
                         </div>
                       </div>
                     </template>
-                    <div class="flex flex-col gap-1.5 text-base">
+                    <!-- P-D10: кликабельные поля контакта по образцу карточки сотрудника.
+                         Телефоны → makeCall (если включена телефония) либо tel:;
+                         e-mail → openEmailBox(адрес) либо mailto:;
+                         Telegram-логин → https://t.me/<login>;
+                         MAX-номер → tel:/копирование (deep-link MAX не подтверждён). -->
+                    <div class="flex flex-col gap-1.5 pt-2 text-base">
+                      <!-- e-mail(ы): основной + все из Contact.email_ids -->
                       <div
-                        v-if="contact.email"
-                        class="flex items-center gap-3 pb-1.5 pl-1 pt-4 text-ink-gray-8"
+                        v-for="email in contactEmails(contact)"
+                        :key="'em-' + email"
+                        class="group flex items-center gap-3 p-1 py-1.5 text-ink-gray-8"
                       >
-                        <Email2Icon class="h-4 w-4" />
-                        {{ contact.email }}
+                        <Email2Icon class="h-4 w-4 shrink-0" />
+                        <button
+                          type="button"
+                          class="truncate text-left hover:text-ink-blue-link hover:underline"
+                          :title="__('Написать письмо')"
+                          @click="writeEmail(email)"
+                        >
+                          {{ email }}
+                        </button>
+                        <a
+                          :href="`mailto:${email}`"
+                          class="ml-auto opacity-0 transition-opacity group-hover:opacity-100"
+                          :title="__('Открыть в почтовом клиенте')"
+                        >
+                          <ArrowUpRightIcon class="h-3.5 w-3.5 text-ink-gray-5" />
+                        </a>
                       </div>
+                      <!-- телефон(ы): mobile_no + все из Contact.phone_nos -->
                       <div
-                        v-if="contact.mobile_no"
+                        v-for="phone in contactPhones(contact)"
+                        :key="'ph-' + phone"
+                        class="group flex items-center gap-3 p-1 py-1.5 text-ink-gray-8"
+                      >
+                        <PhoneIcon class="h-4 w-4 shrink-0" />
+                        <button
+                          type="button"
+                          class="text-left hover:text-ink-blue-link hover:underline"
+                          :title="__('Позвонить')"
+                          @click="callNumber(phone)"
+                        >
+                          {{ formatPhoneDisplay(phone) }}
+                        </button>
+                        <button
+                          type="button"
+                          class="ml-auto opacity-0 transition-opacity group-hover:opacity-100"
+                          :title="__('Скопировать номер')"
+                          @click="copyText(phone)"
+                        >
+                          <FeatherIcon name="copy" class="h-3.5 w-3.5 text-ink-gray-5" />
+                        </button>
+                      </div>
+                      <!-- Telegram-логин → открыть чат в Telegram -->
+                      <div
+                        v-if="contact.nacifrah_telegram"
                         class="flex items-center gap-3 p-1 py-1.5 text-ink-gray-8"
                       >
-                        <PhoneIcon class="h-4 w-4" />
-                        {{ formatPhoneDisplay(contact.mobile_no) }}
+                        <TelegramIcon class="h-4 w-4 shrink-0" />
+                        <a
+                          :href="`https://t.me/${tgLogin(contact.nacifrah_telegram)}`"
+                          target="_blank"
+                          rel="noopener"
+                          class="hover:text-ink-blue-link hover:underline"
+                          :title="__('Открыть чат в Telegram')"
+                        >
+                          {{ '@' + tgLogin(contact.nacifrah_telegram) }}
+                        </a>
+                      </div>
+                      <!-- MAX-номер → tel:/копирование (как в карточке сотрудника) -->
+                      <div
+                        v-if="contact.nacifrah_max"
+                        class="group flex items-center gap-3 p-1 py-1.5 text-ink-gray-8"
+                      >
+                        <PhoneIcon class="h-4 w-4 shrink-0" />
+                        <span class="text-ink-gray-8">
+                          MAX: {{ formatPhoneDisplay(contact.nacifrah_max) }}
+                        </span>
+                        <a
+                          :href="`tel:+${onlyDigits(contact.nacifrah_max)}`"
+                          class="ml-auto"
+                          :title="__('Позвонить')"
+                        >
+                          <PhoneIcon class="h-3.5 w-3.5 text-ink-gray-5" />
+                        </a>
+                        <button
+                          type="button"
+                          :title="__('Скопировать номер')"
+                          @click="copyText(contact.nacifrah_max)"
+                        >
+                          <FeatherIcon name="copy" class="h-3.5 w-3.5 text-ink-gray-5" />
+                        </button>
                       </div>
                       <div
-                        v-if="!contact.email && !contact.mobile_no"
+                        v-if="
+                          !contactEmails(contact).length &&
+                          !contactPhones(contact).length &&
+                          !contact.nacifrah_telegram &&
+                          !contact.nacifrah_max
+                        "
                         class="flex items-center justify-center py-4 text-sm text-ink-gray-4"
                       >
                         {{ __('No Details Added') }}
@@ -385,7 +468,7 @@ import {
   isTranslatable,
 } from '@/utils'
 import { getView } from '@/utils/view'
-import { formatPhoneDisplay } from '@/utils/ruFormat'
+import { formatPhoneDisplay, normalizePhoneToDigits } from '@/utils/ruFormat'
 import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
 import { statusesStore } from '@/stores/statuses'
@@ -401,6 +484,7 @@ import {
   Avatar,
   Tabs,
   Breadcrumbs,
+  FeatherIcon,
   call,
   usePageMeta,
   toast,
@@ -748,6 +832,71 @@ function triggerCall() {
   }
 
   makeCall(mobile_no)
+}
+
+// ── P-D10: кликабельные поля контакта ────────────────────────────────────
+// Список телефонов контакта: mobile_no + все Contact.phone_nos (без дублей).
+function contactPhones(contact) {
+  let list = []
+  if (contact.mobile_no) list.push(contact.mobile_no)
+  ;(contact.phone_nos || []).forEach((p) => {
+    if (p && !list.includes(p)) list.push(p)
+  })
+  return list
+}
+
+// Список e-mail контакта: основной email_id + все Contact.email_ids (без дублей).
+function contactEmails(contact) {
+  let list = []
+  if (contact.email) list.push(contact.email)
+  ;(contact.email_ids || []).forEach((e) => {
+    if (e && !list.includes(e)) list.push(e)
+  })
+  return list
+}
+
+function onlyDigits(s) {
+  return normalizePhoneToDigits(s)
+}
+
+// Telegram-логин без ведущего @ (хранится как «login» или «@login»).
+function tgLogin(value) {
+  return String(value || '').replace(/^@+/, '')
+}
+
+// Звонок: если включена телефонная интеграция — через неё (makeCall),
+// иначе системный tel: (как в карточке сотрудника).
+function callNumber(number) {
+  if (!number) return
+  if (callEnabled.value) {
+    makeCall(number)
+  } else {
+    window.location.href = `tel:+${onlyDigits(number)}`
+  }
+}
+
+// Написать письмо конкретному адресату: открыть нативный email-box и подставить
+// адрес; если box недоступен — fallback на mailto:.
+function writeEmail(email) {
+  if (!email) return
+  try {
+    openEmailBox()
+    nextTick(() => {
+      let editor = activities.value?.emailBox?.editor
+      if (editor) {
+        editor.toEmails = [email]
+      } else {
+        window.location.href = `mailto:${email}`
+      }
+    })
+  } catch (e) {
+    window.location.href = `mailto:${email}`
+  }
+}
+
+function copyText(value) {
+  if (!value) return
+  copyToClipboard(value)
 }
 
 async function triggerStatusChange(value) {
