@@ -17,6 +17,12 @@
         :actions="document.actions"
       />
       <AssignTo v-model="assignees.data" doctype="CRM Deal" :docname="dealId" />
+      <!-- F6 (P-D13): действия сделки. «Объединить» → MergeDealModal (дубли). -->
+      <Dropdown :options="dealActions" placement="bottom-end">
+        <template #default>
+          <Button :tooltip="__('Действия')" icon="more-horizontal" />
+        </template>
+      </Dropdown>
       <Dropdown
         v-if="doc && document.statuses"
         :options="statuses"
@@ -142,6 +148,88 @@
         v-model="doc"
         @updateField="updateField"
       />
+      <!-- F5 (P-D14): организация — ИНН (editable) + Карта партнёра (Attach).
+           Поля на CRM Organization (nacifrah_inn / nacifrah_partner_card).
+           Показываем только когда у сделки задана организация. Запись ведём через
+           organization.setValue (как в Organization.vue). -->
+      <div
+        v-if="doc.organization && organization?.name"
+        class="flex flex-col gap-3 border-b px-5 py-4"
+      >
+        <div class="flex items-center justify-between">
+          <div class="text-base font-medium text-ink-gray-8">
+            {{ __('Организация') }}
+          </div>
+          <Button
+            variant="ghost"
+            :tooltip="__('Открыть организацию')"
+            :icon="ArrowUpRightIcon"
+            @click="
+              router.push({
+                name: 'Organization',
+                params: { organizationId: organization.name },
+              })
+            "
+          />
+        </div>
+        <!-- ИНН (редактируемый) -->
+        <div class="flex flex-col gap-1">
+          <div class="text-xs text-ink-gray-5">{{ __('ИНН') }}</div>
+          <FormControl
+            type="text"
+            size="sm"
+            :placeholder="__('10 или 12 цифр')"
+            :modelValue="organization.nacifrah_inn || ''"
+            @blur="(e) => saveOrgField('nacifrah_inn', e.target.value)"
+            @keydown.enter="(e) => e.target.blur()"
+          />
+        </div>
+        <!-- Карта партнёра (Attach) -->
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs text-ink-gray-5">{{ __('Карта партнёра') }}</div>
+          <div
+            v-if="organization.nacifrah_partner_card"
+            class="flex items-center gap-2 text-base"
+          >
+            <AttachmentIcon class="h-4 w-4 shrink-0 text-ink-gray-5" />
+            <a
+              :href="organization.nacifrah_partner_card"
+              target="_blank"
+              rel="noopener"
+              class="truncate text-ink-blue-link hover:underline"
+              :title="__('Открыть / скачать')"
+            >
+              {{ partnerCardName }}
+            </a>
+            <Button
+              variant="ghost"
+              class="ml-auto shrink-0"
+              :tooltip="__('Удалить')"
+              icon="x"
+              @click="saveOrgField('nacifrah_partner_card', '')"
+            />
+          </div>
+          <FileUploader
+            v-else
+            :doctype="'CRM Organization'"
+            :docname="organization.name"
+            @success="(file) => saveOrgField('nacifrah_partner_card', file.file_url)"
+          >
+            <template #default="{ openFileSelector, uploading, error: upErr }">
+              <div class="flex flex-col gap-1">
+                <Button
+                  variant="subtle"
+                  iconLeft="upload"
+                  :loading="uploading"
+                  :label="__('Загрузить карту партнёра')"
+                  @click="openFileSelector"
+                />
+                <ErrorMessage :message="upErr" />
+              </div>
+            </template>
+          </FileUploader>
+        </div>
+      </div>
       <div
         v-if="sections.data"
         class="flex flex-1 flex-col justify-between overflow-hidden"
@@ -426,6 +514,14 @@
     doctype="CRM Deal"
     :document="document"
   />
+  <!-- F6 (P-D13): модалка объединения дублей. -->
+  <MergeDealModal
+    v-if="showMergeModal"
+    v-model="showMergeModal"
+    :deal="dealId"
+    :dealTitle="title"
+    @merged="onDealsMerged"
+  />
 </template>
 <script setup>
 import DeleteLinkedDocModal from '@/components/DeleteLinkedDocModal.vue'
@@ -455,6 +551,7 @@ import LostReasonModal from '@/components/Modals/LostReasonModal.vue'
 import AssignTo from '@/components/AssignTo.vue'
 import FilesUploader from '@/components/FilesUploader/FilesUploader.vue'
 import ContactModal from '@/components/Modals/ContactModal.vue'
+import MergeDealModal from '@/components/Modals/MergeDealModal.vue'
 import Link from '@/components/Controls/Link.vue'
 import Section from '@/components/Section.vue'
 import SidePanelLayout from '@/components/SidePanelLayout.vue'
@@ -485,6 +582,7 @@ import {
   Tabs,
   Breadcrumbs,
   FeatherIcon,
+  FileUploader,
   call,
   usePageMeta,
   toast,
@@ -606,7 +704,50 @@ onBeforeUnmount(() => {
 const reload = ref(false)
 const showOrganizationModal = ref(false)
 const showFilesUploader = ref(false)
+const showMergeModal = ref(false)
 const _organization = ref({})
+
+// F6 (P-D13): пункты меню действий сделки в шапке. Пока единственный — «Объединить».
+const dealActions = computed(() => [
+  {
+    label: __('Объединить'),
+    icon: 'git-merge',
+    onClick: () => (showMergeModal.value = true),
+  },
+])
+
+// после успешного merge: бэкенд перенёс связи на текущую (primary) сделку —
+// перечитать документ, секции, контакты и активности, чтобы карточка обновилась.
+function onDealsMerged() {
+  document.reload?.()
+  sections.reload()
+  dealContacts.reload()
+  reloadResources({})
+  activities.value?.all_activities?.reload?.()
+}
+
+// F5 (P-D14): запись поля организации (ИНН / карта партнёра) через setValue
+// (как в Organization.vue). После сохранения локально обновляем organization.doc.
+function saveOrgField(field, value) {
+  const orgDoc = organizationDocument.value
+  if (!orgDoc?.doc) return
+  if ((orgDoc.doc[field] || '') === (value || '')) return
+  // оптимистично обновляем локальную копию (для мгновенной перерисовки ссылки/ИНН);
+  // setValue.onSuccess/onError (default из useDocument) покажет toast «обновлено»/ошибку.
+  orgDoc.doc[field] = value
+  orgDoc.setValue.submit({ [field]: value })
+}
+
+// имя файла «Карта партнёра» из file_url (последний сегмент пути) для подписи ссылки.
+const partnerCardName = computed(() => {
+  const url = organization.value?.nacifrah_partner_card
+  if (!url) return ''
+  try {
+    return decodeURIComponent(String(url).split('/').pop()) || url
+  } catch {
+    return url
+  }
+})
 
 const breadcrumbs = computed(() => {
   let items = [{ label: __('Deals'), route: { name: 'Deals' } }]
