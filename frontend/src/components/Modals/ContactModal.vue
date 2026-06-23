@@ -60,7 +60,7 @@ import { evaluateDependsOnValue } from '@/utils'
 import { useDoctypeModal } from '@/composables/doctypeModal'
 import { useTelemetry } from 'frappe-ui/frappe'
 import { createResource } from 'frappe-ui'
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -231,6 +231,20 @@ onMounted(() => {
   _contact.doc = {}
   Object.assign(_contact.doc, props.contact.data || props.contact)
 })
+
+// D7: номер MAX (nacifrah_max) предзаполняем телефоном (mobile_no, иначе phone),
+// пока поле MAX пустое и пользователь не ввёл его вручную. Поля рендерятся
+// генерически через FieldLayout в _contact.doc, поэтому следим за телефоном тут.
+// Не перетираем уже введённый MAX (даём возможность скорректировать).
+watch(
+  () => _contact.doc?.mobile_no || _contact.doc?.phone || '',
+  (phone) => {
+    if (!_contact.doc) return
+    if (phone && !_contact.doc.nacifrah_max) {
+      _contact.doc.nacifrah_max = phone
+    }
+  },
+)
 
 function openQuickEntryModal() {
   showQuickEntryModal.value = true

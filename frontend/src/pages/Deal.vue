@@ -396,13 +396,24 @@
                           <FeatherIcon name="copy" class="h-3.5 w-3.5 text-ink-gray-5" />
                         </button>
                       </div>
-                      <!-- Telegram-логин → открыть чат в Telegram -->
+                      <!-- Telegram-логин → если по сделке уже есть чат, открыть его
+                           ВНУТРИ карточки (вкладка «Мессенджеры»); иначе внешний t.me. -->
                       <div
                         v-if="contact.nacifrah_telegram"
                         class="flex items-center gap-3 p-1 py-1.5 text-ink-gray-8"
                       >
                         <TelegramIcon class="h-4 w-4 shrink-0" />
+                        <button
+                          v-if="hasTgChat"
+                          type="button"
+                          class="text-left hover:text-ink-blue-link hover:underline"
+                          :title="__('Открыть переписку в карточке')"
+                          @click="openMessengersTab"
+                        >
+                          {{ '@' + tgLogin(contact.nacifrah_telegram) }}
+                        </button>
                         <a
+                          v-else
                           :href="`https://t.me/${tgLogin(contact.nacifrah_telegram)}`"
                           target="_blank"
                           rel="noopener"
@@ -566,6 +577,7 @@ import {
 } from '@/utils'
 import { getView } from '@/utils/view'
 import { formatPhoneDisplay, normalizePhoneToDigits } from '@/utils/ruFormat'
+import { napi } from '@/utils/api'
 import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
 import { statusesStore } from '@/stores/statuses'
@@ -695,6 +707,7 @@ onMounted(async () => {
     toast.success(__('Customer Created Successfully'))
   })
   if (document.doc) await triggerOnRender()
+  checkTgChat()
 })
 
 onBeforeUnmount(() => {
@@ -702,6 +715,10 @@ onBeforeUnmount(() => {
 })
 
 const reload = ref(false)
+// P-D8: есть ли по этой сделке переписка в мессенджерах (Telegram). Если да —
+// клик по TG-логину контакта открывает чат ВНУТРИ карточки (вкладка «Мессенджеры»),
+// иначе ведёт на внешний t.me. Проверяем лёгким get_messages при загрузке сделки.
+const hasTgChat = ref(false)
 const showOrganizationModal = ref(false)
 const showFilesUploader = ref(false)
 const showMergeModal = ref(false)
@@ -1003,6 +1020,32 @@ function onlyDigits(s) {
 // Telegram-логин без ведущего @ (хранится как «login» или «@login»).
 function tgLogin(value) {
   return String(value || '').replace(/^@+/, '')
+}
+
+// P-D8: индекс вкладки «Мессенджеры» (name == 'Telegram', label «Мессенджеры»).
+const messengersTabIndex = computed(() =>
+  tabs.value.findIndex((t) => t.name === 'Telegram'),
+)
+
+// Переключить активную вкладку карточки на «Мессенджеры» (открыть переписку in-place).
+function openMessengersTab() {
+  const idx = messengersTabIndex.value
+  if (idx >= 0) tabIndex.value = idx
+}
+
+// P-D8: тихо проверяем наличие переписки по сделке (та же сигнатура, что в
+// TelegramChat.vue). Непустой список → hasTgChat=true. Любая ошибка/настройка не
+// выполнена → false (не ломаем карточку).
+async function checkTgChat() {
+  try {
+    const msgs = await call(napi('telegram.get_messages'), {
+      reference_doctype: 'CRM Deal',
+      reference_name: props.dealId,
+    })
+    hasTgChat.value = Array.isArray(msgs) && msgs.length > 0
+  } catch (e) {
+    hasTgChat.value = false
+  }
 }
 
 // Звонок: если включена телефонная интеграция — через неё (makeCall),
