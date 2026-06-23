@@ -1,6 +1,8 @@
 <template>
-  <Dialog v-model="show" :options="{ size: 'xl' }">
-    <template #body>
+  <!-- M5/удаление: frappe-ui <Dialog> у заказчика рендерился невидимым/за слайд-овером (z-index),
+       из-за чего «сделки/лиды/контакты не удаляются». Перенесли на SimpleModal (z-[9999],
+       гарантированно поверх). hideHeader — у контента ниже своя шапка. -->
+  <SimpleModal v-model="show" size="xl" hide-header>
       <div
         v-if="!confirmDeleteInfo.show"
         class="bg-surface-modal px-4 pb-6 pt-5 sm:px-6"
@@ -126,11 +128,11 @@
           />
         </div>
       </div>
-    </template>
-  </Dialog>
+  </SimpleModal>
 </template>
 
 <script setup>
+import SimpleModal from '@/components/SimpleModal.vue'
 import { createResource, call } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import { computed, ref } from 'vue'

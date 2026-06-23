@@ -9,8 +9,12 @@
     class="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-12"
     @click.self="$emit('update:modelValue', false)"
   >
-    <div class="w-full rounded-xl bg-surface-white p-5 shadow-2xl" :class="sizeClass">
-      <div class="mb-3 flex items-center justify-between">
+    <div
+      class="w-full overflow-hidden rounded-xl bg-surface-white shadow-2xl"
+      :class="[sizeClass, hideHeader ? '' : 'p-5']"
+    >
+      <!-- hideHeader: контент несёт собственную шапку (напр. DeleteLinkedDocModal) -->
+      <div v-if="!hideHeader" class="mb-3 flex items-center justify-between">
         <h3 class="text-lg font-semibold text-ink-gray-9">{{ title }}</h3>
         <button
           class="text-ink-gray-5 hover:text-ink-gray-8"
@@ -31,6 +35,7 @@ const props = defineProps({
   modelValue: Boolean,
   title: { type: String, default: '' },
   size: { type: String, default: 'sm' }, // sm | md | lg | xl | 2xl
+  hideHeader: { type: Boolean, default: false }, // контент со своей шапкой
 })
 defineEmits(['update:modelValue'])
 const sizeClass = computed(
