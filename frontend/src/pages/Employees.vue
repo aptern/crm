@@ -482,13 +482,12 @@
             <FormControl :label="__('Имя')" v-model="form.first_name" :placeholder="__('Иван')" />
             <FormControl :label="__('Отчество')" v-model="form.middle_name" :placeholder="__('Иванович')" />
           </div>
-          <FormControl
-            type="email"
-            :label="__('Email (логин)')"
-            v-model="form.email"
-            placeholder="ivan@nacifrah.ru"
-          />
-          <FormControl type="password" :label="__('Пароль')" v-model="form.password" />
+          <!-- Email НЕ спрашиваем: корпоративная почта создаётся автоматически по имени/фамилии
+               и она же = логин (заказчик). -->
+          <p class="rounded-md bg-surface-gray-2 px-3 py-2 text-xs text-ink-gray-6">
+            {{ __('Логин и рабочая почта (имя.фамилия@nacifrah.ru) создадутся автоматически.') }}
+          </p>
+          <FormControl type="password" :label="__('Пароль (необязательно)')" v-model="form.password" />
           <FormControl
             type="select"
             :label="__('Роль')"
@@ -1050,9 +1049,10 @@ function onEnterHire(e) {
 
 async function doHire() {
   error.value = ''
-  // M9: имя и фамилия обязательны (отображаем «Имя Фамилия»)
-  if (!form.first_name || !form.last_name || !form.email) {
-    error.value = __('Укажите Фамилию, Имя и email')
+  // M9: имя и фамилия обязательны (отображаем «Имя Фамилия»). Email НЕ спрашиваем —
+  // бэкенд сам сгенерирует корпоративную почту = логин по имени/фамилии.
+  if (!form.first_name || !form.last_name) {
+    error.value = __('Укажите Фамилию и Имя')
     return
   }
   hiring.value = true
@@ -1062,7 +1062,6 @@ async function doHire() {
       first_name: form.first_name,
       last_name: form.last_name,
       middle_name: form.middle_name || null,
-      email: form.email,
       role: form.role,
       designation: designation,
       department: form.department || null,
