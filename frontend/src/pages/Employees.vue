@@ -952,16 +952,12 @@ const form = reactive({
   cell_number: '', // I32: телефон сотрудника
 })
 
-const designations = createResource({
-  url: 'frappe.client.get_list',
-  params: { doctype: 'Designation', fields: ['name'], limit_page_length: 0 },
-  auto: true,
-})
-const departments = createResource({
-  url: 'frappe.client.get_list',
-  params: { doctype: 'Department', fields: ['name'], limit_page_length: 0 },
-  auto: true,
-})
+// Пикеры должности/отдела — через whitelisted hr-методы (ignore_permissions), а НЕ прямой
+// get_list: у ролей без HR-доступа (напр. «чистый» System Manager) get_list Designation/
+// Department давал 403 в форме найма (пустые пикеры + ошибка в консоли). hr.list_* отдают
+// reference-данные всем staff-менеджерам. Формат [{name}] совместим с билдерами опций ниже.
+const designations = createResource({ url: napi('hr.list_designations'), auto: true })
+const departments = createResource({ url: napi('hr.list_departments'), auto: true })
 // live: сотрудник/должность/отдел изменены где-угодно → обновляем список и справочники
 useRealtimeRefresh(['Employee', 'Designation', 'Department'], async () => {
   await loadEmployees()
