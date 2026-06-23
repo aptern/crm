@@ -46,6 +46,8 @@
           <th class="px-3 py-2 font-medium">{{ __('Должность') }}</th>
           <th class="px-3 py-2 font-medium">{{ __('Отдел') }}</th>
           <th class="px-3 py-2 font-medium">{{ __('Логин') }}</th>
+          <!-- ДОСТУПЫ: пароль входа — ТОЛЬКО для администратора -->
+          <th v-if="isAdmin()" class="px-3 py-2 font-medium">{{ __('Пароль') }}</th>
           <th class="px-3 py-2 font-medium">{{ __('Статус') }}</th>
         </tr>
       </thead>
@@ -65,6 +67,41 @@
           <td class="px-3 py-2 text-ink-gray-7">{{ e.designation || '—' }}</td>
           <td class="px-3 py-2 text-ink-gray-7">{{ e.department || '—' }}</td>
           <td class="px-3 py-2 text-ink-gray-7">{{ e.user_id || '—' }}</td>
+          <!-- ДОСТУПЫ: пароль + показать/скрыть + копировать + сброс — ТОЛЬКО админ -->
+          <td v-if="isAdmin()" class="px-3 py-2 text-ink-gray-7" @click.stop>
+            <div class="flex items-center gap-1.5">
+              <span class="min-w-[7rem] font-mono text-xs text-ink-gray-8">
+                {{ credDisplay(e) }}
+              </span>
+              <button
+                v-if="credPassword(e)"
+                type="button"
+                class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+                :title="shownPw[e.name] ? __('Скрыть') : __('Показать')"
+                @click.stop="togglePw(e)"
+              >
+                <FeatherIcon :name="shownPw[e.name] ? 'eye-off' : 'eye'" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                v-if="credPassword(e)"
+                type="button"
+                class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+                :title="__('Копировать')"
+                @click.stop="copyPassword(e)"
+              >
+                <FeatherIcon name="copy" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+                :title="__('Сбросить пароль')"
+                :disabled="resettingPw[e.name]"
+                @click.stop="resetPassword(e)"
+              >
+                <FeatherIcon name="refresh-cw" class="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </td>
           <td class="px-3 py-2">
             <span
               class="rounded px-2 py-0.5 text-xs font-medium"
@@ -498,7 +535,80 @@ onMounted(async () => {
   } catch (e) {
     canManage.value = false
   }
+  loadCredentials()
 })
+
+// ── ДОСТУПЫ: логины/пароли входа — ТОЛЬКО админ ──────────────────────
+// creds[employee] = { login, password }; backend сам проверяет _require_admin (403 не-админу)
+const creds = ref({})
+const shownPw = reactive({})
+const resettingPw = reactive({})
+async function loadCredentials() {
+  if (!isAdmin()) return
+  try {
+    const rows = await call(napi('hr.get_employee_credentials'))
+    const map = {}
+    for (const r of rows || []) {
+      map[r.employee] = { login: r.login || '', password: r.password || '' }
+    }
+    creds.value = map
+  } catch (e) {
+    // 403 у не-админа / любая ошибка — просто скрываем доступы
+    creds.value = {}
+  }
+}
+function credPassword(e) {
+  return creds.value[e.name]?.password || ''
+}
+function credDisplay(e) {
+  const pw = credPassword(e)
+  if (!pw) return '—'
+  return shownPw[e.name] ? pw : '••••••••'
+}
+function togglePw(e) {
+  shownPw[e.name] = !shownPw[e.name]
+}
+async function copyPassword(e) {
+  const pw = credPassword(e)
+  if (!pw) return
+  try {
+    await navigator.clipboard.writeText(pw)
+    toast.success(__('Пароль скопирован'))
+  } catch (err) {
+    toast.error(__('Не удалось скопировать'))
+  }
+}
+function resetPassword(e) {
+  confirmState.value = {
+    show: true,
+    danger: true,
+    confirmLabel: __('Сбросить'),
+    message: __('Сбросить пароль входа для «{0}»? Старый пароль перестанет работать.').replace(
+      '{0}',
+      e.employee_name,
+    ),
+    onConfirm: async () => {
+      resettingPw[e.name] = true
+      try {
+        const res = await call(napi('hr.set_employee_password'), { employee: e.name })
+        if (res?.ok) {
+          creds.value = {
+            ...creds.value,
+            [e.name]: { login: res.login || creds.value[e.name]?.login || '', password: res.password || '' },
+          }
+          shownPw[e.name] = true
+          toast.success(__('Новый пароль: {0}', [res.password || '']))
+        } else {
+          toast.error(__('Не удалось сбросить пароль'))
+        }
+      } catch (err) {
+        toast.error(err?.messages?.[0] || __('Не удалось сбросить пароль'))
+      } finally {
+        resettingPw[e.name] = false
+      }
+    },
+  }
+}
 
 const statusFilterOptions = [
   { label: 'Активные', value: 'Active' },
