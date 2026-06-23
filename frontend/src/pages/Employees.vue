@@ -330,6 +330,64 @@
                   </div>
                 </div>
 
+                <!-- ДОСТУПЫ (логин/пароль входа в CRM) — ТОЛЬКО админ.
+                     Заказчик: получить/сменить/сбросить/скопировать пароль учётки сотрудника.
+                     Бэкенд сам гейтит _require_admin; пароль — зеркало в Employee.nacifrah_login_password. -->
+                <div v-if="isAdmin() && card.user_id" class="mt-4 border-t border-outline-gray-1 pt-3">
+                  <div class="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-gray-5">
+                    <FeatherIcon name="lock" class="h-3.5 w-3.5" />
+                    {{ __('Доступы (только админ)') }}
+                  </div>
+                  <div class="flex items-start gap-2 text-sm">
+                    <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">{{ __('Логин') }}</div>
+                    <div class="flex flex-1 items-center gap-2 pt-1.5">
+                      <span class="font-mono text-xs text-ink-gray-8">{{ card.user_id }}</span>
+                      <button
+                        type="button"
+                        class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+                        :title="__('Скопировать логин')"
+                        @click="copyLogin(card)"
+                      >
+                        <FeatherIcon name="copy" class="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex items-start gap-2 text-sm">
+                    <div class="w-32 shrink-0 pt-1.5 text-ink-gray-5">{{ __('Пароль') }}</div>
+                    <div class="flex flex-1 flex-wrap items-center gap-1.5 pt-1.5">
+                      <span class="min-w-[7rem] font-mono text-xs text-ink-gray-8">{{ credDisplay(card) }}</span>
+                      <button
+                        v-if="credPassword(card)"
+                        type="button"
+                        class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+                        :title="shownPw[card.name] ? __('Скрыть') : __('Показать')"
+                        @click="togglePw(card)"
+                      >
+                        <FeatherIcon :name="shownPw[card.name] ? 'eye-off' : 'eye'" class="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        v-if="credPassword(card)"
+                        type="button"
+                        class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+                        :title="__('Копировать пароль')"
+                        @click="copyPassword(card)"
+                      >
+                        <FeatherIcon name="copy" class="h-3.5 w-3.5" />
+                      </button>
+                      <Button
+                        size="sm"
+                        variant="subtle"
+                        :loading="resettingPw[card.name]"
+                        :label="credPassword(card) ? __('Сбросить') : __('Задать пароль')"
+                        @click="resetPassword(card)"
+                      />
+                    </div>
+                  </div>
+                  <div v-if="!credPassword(card)" class="mt-1 pl-[8.5rem] text-xs text-ink-gray-5">
+                    {{ __('Пароль не сохранён (ставился вне CRM). «Задать пароль» — сгенерируется новый и сохранится.') }}
+                  </div>
+                </div>
+
                 <!-- P-B5: панель «Сохранить»/«Отмена» в режиме правки -->
                 <div v-if="editMode" class="mt-4 flex gap-2">
                   <Button
@@ -574,6 +632,16 @@ async function copyPassword(e) {
   try {
     await navigator.clipboard.writeText(pw)
     toast.success(__('Пароль скопирован'))
+  } catch (err) {
+    toast.error(__('Не удалось скопировать'))
+  }
+}
+async function copyLogin(e) {
+  const login = e.user_id || creds.value[e.name]?.login || ''
+  if (!login) return
+  try {
+    await navigator.clipboard.writeText(login)
+    toast.success(__('Логин скопирован'))
   } catch (err) {
     toast.error(__('Не удалось скопировать'))
   }
