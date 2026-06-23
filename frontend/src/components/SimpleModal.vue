@@ -4,11 +4,15 @@
   явный z-[9999], сплошной фон — гарантированно виден в любом контексте. Reka не задействован.
 -->
 <template>
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-12"
-    @click.self="$emit('update:modelValue', false)"
-  >
+  <!-- Teleport в body: иначе модалка застревает в нижнем stacking-context страницы и уходит ПОД
+       карточку-слайдовер (Teleport-to-body, z-40) — клик перехватывался ею («модалка за окном»).
+       На уровне body z-[9999] > z-40 → модалка реально поверх и кликабельна. -->
+  <Teleport to="body">
+    <div
+      v-if="modelValue"
+      class="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-12"
+      @click.self="$emit('update:modelValue', false)"
+    >
     <div
       class="w-full overflow-hidden rounded-xl bg-surface-white shadow-2xl"
       :class="[sizeClass, hideHeader ? '' : 'p-5']"
@@ -24,8 +28,9 @@
         </button>
       </div>
       <slot />
+      </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup>
