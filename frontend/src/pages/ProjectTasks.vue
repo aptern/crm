@@ -1019,7 +1019,7 @@ function deleteProject(p) {
     show: true,
     danger: true,
     confirmLabel: __('Удалить'),
-    message: __('Удалить проект «{0}» вместе со всеми его задачами?').replace('{0}', projDisplay(p)),
+    message: __('Удалить проект «{0}» вместе со всеми его задачами?', [projDisplay(p)]),
     onConfirm: async () => {
       await call(napi('api.delete_project'), { project: p.name })
       if (selected.value.includes(p.name)) selectAll()

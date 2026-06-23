@@ -344,7 +344,7 @@ function removeDept(node) {
     show: true,
     danger: true,
     confirmLabel: __('Удалить'),
-    message: __('Удалить отдел «{0}»?').replace('{0}', node.label),
+    message: __('Удалить отдел «{0}»?', [node.label]),
     onConfirm: async () => {
       await call(napi('hr.delete_department'), { department: node.name })
       await load()
@@ -361,7 +361,7 @@ function clearAll() {
     onConfirm: async () => {
       const r = await call(napi('hr.clear_departments'))
       await load()
-      toast.success(__('Удалено отделов: {0}').replace('{0}', r?.count ?? 0))
+      toast.success(__('Удалено отделов: {0}', [r?.count ?? 0]))
     },
   }
 }

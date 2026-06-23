@@ -650,10 +650,9 @@ function resetPassword(e) {
     show: true,
     danger: true,
     confirmLabel: __('Сбросить'),
-    message: __('Сбросить пароль входа для «{0}»? Старый пароль перестанет работать.').replace(
-      '{0}',
+    message: __('Сбросить пароль входа для «{0}»? Старый пароль перестанет работать.', [
       e.employee_name,
-    ),
+    ]),
     onConfirm: async () => {
       resettingPw[e.name] = true
       try {
@@ -894,10 +893,9 @@ function doDelete() {
     show: true,
     danger: true,
     confirmLabel: __('Удалить'),
-    message: __('Удалить сотрудника «{0}» полностью? Удалятся карточка и логин. Необратимо.').replace(
-      '{0}',
+    message: __('Удалить сотрудника «{0}» полностью? Удалятся карточка и логин. Необратимо.', [
       emp.employee_name,
-    ),
+    ]),
     onConfirm: async () => {
       await call(napi('hr.delete_employee'), { employee: emp.name })
       card.value = null

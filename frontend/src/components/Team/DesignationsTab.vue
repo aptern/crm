@@ -99,7 +99,7 @@
 
     <SimpleModal v-model="showDelete" :title="__('Удалить должность')">
       <p class="text-base text-ink-gray-7">
-        {{ __('Удалить должность «{0}»? Сотрудники останутся без должности.').replace('{0}', delTarget) }}
+        {{ __('Удалить должность «{0}»? Сотрудники останутся без должности.', [delTarget]) }}
       </p>
       <div class="mt-4 flex justify-end gap-2">
         <Button :label="__('Отмена')" @click="showDelete = false" />
