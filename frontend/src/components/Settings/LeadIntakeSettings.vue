@@ -54,7 +54,16 @@
             "
           >
             <div class="px-3 py-3 font-medium text-ink-gray-8">
-              {{ __(row.channel) }}
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span>{{ __(row.channel) }}</span>
+                <Badge
+                  :theme="row.status === 'live' ? 'green' : 'orange'"
+                  size="sm"
+                  :label="
+                    row.status === 'live' ? __('Live') : __('Планируется')
+                  "
+                />
+              </div>
             </div>
             <div class="px-3 py-3">
               <Badge
@@ -134,41 +143,64 @@ import { Badge, Button, createListResource } from 'frappe-ui'
 // Соответствует backend-картам: site_intake.resolve_source (HINT_MAP/MEDIUM_MAP/SEO_REFERRERS)
 // и сид-списку deals_fields.RU_LEAD_SOURCES. Read-only — редактирование источников
 // идёт через CRM Lead Source.
+// status: 'live' — канал реально создаёт лиды в текущей сборке; 'planned' — заявлен
+// в плане (P-D4), но создание лида ещё НЕ реализовано. Теги источников совпадают с
+// реальными: telegram.py lead.source='Telegram', max_messenger.py 'MAX', site_intake
+// SOURCE_HINT_MAP. Email→hello@ сейчас НЕ конвертится в лид (create_lead_from_incoming_email=0).
 const channels = [
   {
     channel: 'Website form (advertising)',
     sources: ['Реклама'],
+    status: 'live',
     note: 'Form requests via nacifrah.site_intake.create_lead; paid traffic detected by referrer/UTM (cpc, ppc, paid, ads).',
   },
   {
     channel: 'Website form (SEO)',
     sources: ['SEO'],
+    status: 'live',
     note: 'Same intake endpoint; organic traffic detected by search-engine referrer (Yandex, Google, etc.) or utm_medium=organic.',
+  },
+  {
+    channel: 'Telegram (бот)',
+    sources: ['Telegram'],
+    status: 'live',
+    note: 'Лиды из Telegram-бота (@nacifrah_ru_bot); lead.source = "Telegram"; дедуп по номеру телефона.',
+  },
+  {
+    channel: 'MAX (бот)',
+    sources: ['MAX'],
+    status: 'live',
+    note: 'Лиды из мессенджера MAX; lead.source = "MAX"; дедуп по номеру телефона.',
+  },
+  {
+    channel: 'Website form (messenger hint)',
+    sources: ['Мессенджеры'],
+    status: 'live',
+    note: 'Заявка с сайта с признаком source_hint=«мессенджеры» → источник «Мессенджеры».',
   },
   {
     channel: 'Email to hello@ (Mail module)',
     sources: ['Электронная почта'],
-    note: 'Incoming email handled by the self-hosted Mail module creates a lead.',
+    status: 'planned',
+    note: 'Планируется: создание лида из входящего письма. Сейчас Mail-модуль письма в лиды НЕ конвертирует (create_lead_from_incoming_email отключён).',
   },
   {
     channel: 'Email campaign',
     sources: ['e-mail рассылка'],
-    note: 'Leads generated from outgoing email campaigns / newsletters.',
+    status: 'planned',
+    note: 'Планируется: лиды из исходящих e-mail рассылок / новостных писем (пока не реализовано).',
   },
   {
     channel: 'Auto-dialer',
     sources: ['Автообзвон'],
-    note: 'Leads created from automated outbound calling.',
+    status: 'planned',
+    note: 'Планируется: лиды из автоматического обзвона (пока не реализовано).',
   },
   {
     channel: 'Call center',
     sources: ['Call Center'],
-    note: 'Leads created by the call-center operators.',
-  },
-  {
-    channel: 'Messengers (Telegram / MAX)',
-    sources: ['Мессенджеры'],
-    note: 'Telegram and MAX intake is live in production; deduplicated by phone number.',
+    status: 'planned',
+    note: 'Планируется: лиды от операторов call-центра (пока не реализовано).',
   },
 ]
 
