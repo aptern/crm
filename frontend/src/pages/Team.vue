@@ -6,13 +6,20 @@
 <template>
   <LayoutHeader>
     <template #left-header>
-      <div class="flex items-center gap-3">
-        <div class="text-lg font-semibold text-ink-gray-8">{{ __('Команда') }}</div>
-        <div class="flex rounded-lg bg-surface-gray-2 p-0.5">
+      <!-- MOBILE (П-MOBILE): заголовок «Команда» скрыт на телефоне (дублирует меню),
+           ряд вкладок горизонтально прокручивается, кнопки не сжимаются — иначе
+           вкладки уезжали за край экрана. -->
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="hidden shrink-0 text-lg font-semibold text-ink-gray-8 sm:block">
+          {{ __('Команда') }}
+        </div>
+        <div
+          class="flex min-w-0 overflow-x-auto rounded-lg bg-surface-gray-2 p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           <button
             v-for="t in tabs"
             :key="t.key"
-            class="rounded-md px-3 py-1 text-sm font-medium transition"
+            class="shrink-0 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition"
             :class="
               tab === t.key
                 ? 'bg-surface-white text-ink-gray-8 shadow-sm'

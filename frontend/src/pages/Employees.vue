@@ -39,7 +39,11 @@
       <span class="text-xs text-ink-gray-4">{{ (employeeList || []).length }} {{ __('чел.') }}</span>
     </div>
 
-    <table class="w-full text-sm">
+    <!-- MOBILE (П-MOBILE): таблица шире экрана → горизонтальный скролл, чтобы колонки
+         (Логин/Пароль/Статус) не обрезались. Тап по строке открывает карточку сотрудника,
+         где все действия (пароль/сброс/копир.) доступны и на мобильном. -->
+    <div class="overflow-x-auto">
+    <table class="w-full min-w-[680px] text-sm">
       <thead>
         <tr class="border-b border-outline-gray-1 text-left text-ink-gray-5">
           <th class="px-3 py-2 font-medium">{{ __('Сотрудник') }}</th>
@@ -113,6 +117,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
     <div
       v-if="employeeList && !employeeList.length"
       class="p-8 text-center text-sm text-ink-gray-5"
