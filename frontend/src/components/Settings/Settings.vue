@@ -8,7 +8,14 @@
     <template #body>
       <div class="flex h-[calc(100vh_-_8rem)] bg-surface-menu-bar">
         <div
-          class="flex flex-col m-1 rounded-l-lg w-56 shrink-0 bg-surface-menu-bar overflow-y-auto"
+          class="flex flex-col m-1 rounded-l-lg bg-surface-menu-bar overflow-y-auto"
+          :class="
+            isMobileView
+              ? mobileShowContent
+                ? 'hidden'
+                : 'w-full'
+              : 'w-56 shrink-0'
+          "
         >
           <template v-for="(tab, i) in tabs" :key="tab.label">
             <div v-if="!tab.hideLabel && i != 0" class="mx-1 mb-0.5 mt-[5px]" />
@@ -30,12 +37,24 @@
                     ? 'bg-surface-selected shadow-sm hover:bg-surface-selected'
                     : 'hover:bg-surface-gray-3'
                 "
-                @click="activeSettingsPage = item.label"
+                @click="onSelectItem(item.label)"
               />
             </nav>
           </template>
         </div>
-        <div class="flex flex-col flex-1 overflow-y-auto bg-surface-modal">
+        <div
+          class="flex flex-col flex-1 overflow-y-auto bg-surface-modal"
+          :class="isMobileView && !mobileShowContent ? 'hidden' : ''"
+        >
+          <!-- MOBILE: кнопка «назад» к списку разделов -->
+          <button
+            v-if="isMobileView"
+            class="m-2 flex items-center gap-1 self-start rounded px-2 py-1 text-sm text-ink-gray-6 hover:bg-surface-gray-2"
+            @click="mobileShowContent = false"
+          >
+            <FeatherIcon name="chevron-left" class="h-4 w-4" />
+            {{ __('Все настройки') }}
+          </button>
           <component :is="activeTab.component" v-if="activeTab" />
         </div>
       </div>
@@ -79,9 +98,10 @@ import {
   showSettings,
   activeSettingsPage,
   disableSettingModalOutsideClick,
+  isMobileView,
 } from '@/composables/settings'
 import { isWhatsappInstalled } from '@/composables/whatsapp'
-import { Dialog, Avatar } from 'frappe-ui'
+import { Dialog, Avatar, FeatherIcon } from 'frappe-ui'
 import { ref, markRaw, computed, watch, h } from 'vue'
 import AssignmentRulePage from './AssignmentRules/AssignmentRulePage.vue'
 import ShieldCheck from '~icons/lucide/shield-check'
@@ -254,6 +274,19 @@ const tabs = computed(() => {
 })
 
 const activeTab = ref(tabs.value[0].items[0])
+
+// MOBILE (П-MOBILE): на телефоне модалка настроек показывает ЛИБО список разделов,
+// ЛИБО контент выбранного раздела (не две панели рядом, как на десктопе). Клик по
+// пункту → показать контент с кнопкой «назад». Всё поведение гейтится isMobileView,
+// десктоп не меняется.
+const mobileShowContent = ref(false)
+function onSelectItem(label) {
+  activeSettingsPage.value = label
+  mobileShowContent.value = true
+}
+watch(showSettings, (v) => {
+  if (v) mobileShowContent.value = !!activeSettingsPage.value
+})
 
 function setActiveTab(tabName) {
   activeTab.value =
