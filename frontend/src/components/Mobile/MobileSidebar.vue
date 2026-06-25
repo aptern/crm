@@ -34,6 +34,25 @@
                 </template>
               </SidebarLink>
             </div>
+            <!-- MOBILE: кастомные модули nacifrah (Дашборд/Проекты/Почта/База знаний/
+                 Команда/Параметры воронок) — на десктопе они в AppSidebar, на мобильном
+                 их не было → модули были недоступны с телефона. Добавлено (задача П-MOBILE). -->
+            <nav class="mb-2 flex flex-col">
+              <SidebarLink
+                v-for="link in customLinks"
+                :key="link.label"
+                :label="__(link.label)"
+                :to="link.to"
+                class="mx-2 my-0.5"
+              >
+                <template #icon>
+                  <FeatherIcon
+                    :name="link.icon"
+                    class="h-4 w-4 text-ink-gray-8"
+                  />
+                </template>
+              </SidebarLink>
+            </nav>
             <div v-for="view in allViews" :key="view.label">
               <Section
                 :label="view.name"
@@ -66,6 +85,19 @@
                 </nav>
               </Section>
             </div>
+            <!-- MOBILE: Настройки (только менеджер) — открывают модалку Settings,
+                 которая подмонтирована ниже (вне Dialog, чтобы не зависеть от него). -->
+            <nav v-if="isManager()" class="mb-4 mt-1 flex flex-col">
+              <SidebarLink
+                :label="__('Настройки')"
+                class="mx-2 my-0.5"
+                @click="openSettings"
+              >
+                <template #icon>
+                  <FeatherIcon name="settings" class="h-4 w-4 text-ink-gray-8" />
+                </template>
+              </SidebarLink>
+            </nav>
           </div>
         </div>
       </TransitionChild>
@@ -82,6 +114,9 @@
       </TransitionChild>
     </Dialog>
   </TransitionRoot>
+  <!-- MOBILE: модалка Настроек монтируется здесь (на мобильном AppSidebar не рендерится,
+       а GlobalModals её не содержит) — иначе клик «Настройки» ничего не открывал бы. -->
+  <Settings />
 </template>
 <script setup>
 import {
@@ -102,12 +137,39 @@ import TaskIcon from '@/components/Icons/TaskIcon.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
 import NotificationsIcon from '@/components/Icons/NotificationsIcon.vue'
 import SidebarLink from '@/components/SidebarLink.vue'
+import Settings from '@/components/Settings/Settings.vue'
+import { FeatherIcon } from 'frappe-ui'
 import { viewsStore } from '@/stores/views'
+import { usersStore } from '@/stores/users'
 import { unreadNotificationsCount } from '@/stores/notifications'
 import { computed, h } from 'vue'
-import { mobileSidebarOpened as sidebarOpened } from '@/composables/settings'
+import {
+  mobileSidebarOpened as sidebarOpened,
+  showSettings,
+} from '@/composables/settings'
 
 const { getPinnedViews, getPublicViews } = viewsStore()
+const { isManager } = usersStore()
+
+// MOBILE (П-MOBILE): кастомные модули nacifrah, которых не было в мобильном меню.
+// Маршруты совпадают с десктопным AppSidebar (_allCustomNav + Dashboard + Funnels).
+// Лиды/Сделки/Контакты/Организации/Заметки/Задачи/Звонки уже есть ниже в links.
+const _customLinks = [
+  { label: 'Dashboard', icon: 'grid', to: 'Dashboard' },
+  { label: 'Проекты', icon: 'folder', to: 'Projects' },
+  { label: 'Почта', icon: 'mail', to: 'Mail' },
+  { label: 'База знаний', icon: 'book-open', to: 'KnowledgeBase' },
+  { label: 'Команда', icon: 'users', to: 'Team', managerOnly: true },
+  { label: 'Параметры воронок', icon: 'sliders', to: 'Funnels', managerOnly: true },
+]
+const customLinks = computed(() =>
+  _customLinks.filter((l) => !l.managerOnly || isManager()),
+)
+
+function openSettings() {
+  sidebarOpened.value = false
+  showSettings.value = true
+}
 
 const links = [
   {
