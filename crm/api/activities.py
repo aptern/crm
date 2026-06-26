@@ -20,12 +20,32 @@ def get_activities(name: str):
 		frappe.throw(_("Document not found"), frappe.DoesNotExistError)
 
 
+def _messenger_comm_names(doctype, name):
+	"""nacifrah: имена Communication-сообщений мессенджеров (Telegram/MAX) для документа.
+	Они показываются в своей вкладке «Мессенджеры», поэтому из общей email-ленты их убираем
+	(иначе рендерятся email-шаблоном с пустым отправителем «<null>» и «Кому:»)."""
+	if not frappe.db.has_column("Communication", "nacifrah_channel"):
+		return set()
+	return set(
+		frappe.get_all(
+			"Communication",
+			filters={
+				"reference_doctype": doctype,
+				"reference_name": name,
+				"nacifrah_channel": ["in", ["Telegram", "MAX"]],
+			},
+			pluck="name",
+		)
+	)
+
+
 def get_deal_activities(name: str):
 	if not frappe.has_permission("CRM Deal", "read", name):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 	get_docinfo("", "CRM Deal", name)
 	docinfo = frappe.response["docinfo"]
+	_msgr_comms = _messenger_comm_names("CRM Deal", name)
 	deal_meta = frappe.get_meta("CRM Deal")
 	deal_fields = {
 		field.fieldname: {"label": field.label, "options": field.options} for field in deal_meta.fields
@@ -131,6 +151,8 @@ def get_deal_activities(name: str):
 		activities.append(activity)
 
 	for communication in docinfo.communications + docinfo.automated_messages:
+		if communication.name in _msgr_comms:
+			continue
 		activity = {
 			"activity_type": "communication",
 			"communication_type": communication.communication_type,
@@ -180,6 +202,7 @@ def get_lead_activities(name: str):
 
 	get_docinfo("", "CRM Lead", name)
 	docinfo = frappe.response["docinfo"]
+	_msgr_comms = _messenger_comm_names("CRM Lead", name)
 	lead_meta = frappe.get_meta("CRM Lead")
 	lead_fields = {
 		field.fieldname: {"label": field.label, "options": field.options} for field in lead_meta.fields
@@ -272,6 +295,8 @@ def get_lead_activities(name: str):
 		activities.append(activity)
 
 	for communication in docinfo.communications + docinfo.automated_messages:
+		if communication.name in _msgr_comms:
+			continue
 		activity = {
 			"activity_type": "communication",
 			"communication_type": communication.communication_type,
