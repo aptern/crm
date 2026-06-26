@@ -177,12 +177,13 @@ def get_permlevel_access(permission_type="write", doctype=None, parent_doctype=N
 
 
 def get_field_obj(field):
-	field["placeholder"] = field.get("placeholder") or "Add " + field.label + "..."
+	# UX-фикс: русский плейсхолдер (был англ. «Add …/Select …» в русском интерфейсе)
+	field["placeholder"] = field.get("placeholder") or "Добавить " + field.label + "…"
 
 	if field.fieldtype == "Link":
-		field["placeholder"] = field.get("placeholder") or "Select " + field.label + "..."
+		field["placeholder"] = field.get("placeholder") or "Выбрать " + field.label + "…"
 	elif field.fieldtype == "Select" and field.options:
-		field["placeholder"] = field.get("placeholder") or "Select " + field.label + "..."
+		field["placeholder"] = field.get("placeholder") or "Выбрать " + field.label + "…"
 		field["options"] = [{"label": option, "value": option} for option in field.options.split("\n")]
 
 	if field.read_only:
