@@ -584,13 +584,16 @@ const resolvedHtml = computed(() => {
 })
 
 const getPlaceholder = (field) => {
-  if (field.placeholder) {
+  // UX-фикс: авто-плейсхолдеры вида «Add Source…/Add Organization…» приходят на английском
+  // (field.placeholder) и не переведены → игнорируем «Add …» и строим локализованный
+  // плейсхолдер по label (label уже русский). Кастомные НЕ-«Add» плейсхолдеры оставляем.
+  if (field.placeholder && !/^Add\s/i.test(field.placeholder)) {
     return __(field.placeholder)
   }
-  if (['Select', 'Link'].includes(field.fieldtype)) {
-    return __('Select {0}', [__(field.label)])
+  if (['Select', 'Link', 'Table', 'Table MultiSelect'].includes(field.fieldtype)) {
+    return __('Выбрать {0}', [__(field.label)])
   } else {
-    return __('Enter {0}', [__(field.label)])
+    return __('Введите {0}', [__(field.label)])
   }
 }
 
