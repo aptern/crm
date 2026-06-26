@@ -139,9 +139,11 @@
               />
             </div>
           </div>
-          <!-- I25 (как Bitrix): сумма всех сделок этапа -->
+          <!-- I25 (как Bitrix): сумма всех сделок этапа. NACIFRAH (ux-critique [d_deals_kanban] 116):
+               показываем пилюлю под КАЖДОЙ колонкой (в т.ч. «0 ₽» для пустых стадий) — раньше
+               при undefined-сумме пилюля пропадала и колонки выглядели несогласованно. -->
           <div
-            v-if="amountField && stageSums[column.column.name] !== undefined"
+            v-if="amountField"
             class="rounded bg-surface-gray-3 px-2 py-1 text-center text-sm font-semibold text-ink-gray-7"
           >
             {{ formatRub(stageSums[column.column.name] || 0) }}
