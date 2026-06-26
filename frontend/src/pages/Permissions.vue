@@ -14,6 +14,16 @@
       }}
     </p>
 
+    <!-- NACIFRAH (ux-critique [d_team_perms] 54): явный индикатор автосохранения —
+         отдельной кнопки «Сохранить» нет, изменения применяются по клику. -->
+    <div class="mb-3 text-xs" :class="saving ? 'text-ink-gray-7' : 'text-ink-gray-5'">
+      {{
+        saving
+          ? __('Сохранение…')
+          : __('Изменения сохраняются автоматически — отдельная кнопка не нужна.')
+      }}
+    </div>
+
     <table v-if="data" class="w-full text-sm">
       <thead>
         <tr class="border-b border-outline-gray-1 text-left text-ink-gray-5">

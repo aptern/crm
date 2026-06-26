@@ -42,6 +42,10 @@
           <FeatherIcon :name="boxIcon(b.type)" class="h-4 w-4 shrink-0" />
           <span class="flex-1 truncate">{{ b.label }}</span>
         </button>
+        <!-- NACIFRAH (ux-critique [d_mail] 58): подсказка при отсутствии ящиков. -->
+        <div v-if="!mailboxes.length" class="px-2 py-1.5 text-sm text-ink-gray-5">
+          {{ __('Нет подключённых ящиков') }}
+        </div>
 
         <div class="mt-3 px-2 py-1 text-xs font-medium uppercase text-ink-gray-4">{{ __('Папки') }}</div>
         <!-- Псевдо-папка «Важное» (поиск по \Flagged, не IMAP-папка) -->
@@ -141,7 +145,17 @@
         </div>
 
         <div v-if="loadingList" class="p-4 text-sm text-ink-gray-5">{{ __('Загрузка…') }}</div>
-        <div v-else-if="!emails.length" class="p-4 text-sm text-ink-gray-5">{{ __('Писем нет') }}</div>
+        <!-- NACIFRAH (ux-critique [d_mail] 60): полноценный empty-state вместо холодного «Писем нет». -->
+        <div
+          v-else-if="!emails.length"
+          class="flex flex-col items-center justify-center gap-2 py-20 text-center"
+        >
+          <FeatherIcon name="inbox" class="h-8 w-8 text-ink-gray-4" />
+          <div class="text-base font-medium text-ink-gray-7">{{ __('В этой папке нет писем') }}</div>
+          <div class="max-w-xs text-sm text-ink-gray-5">
+            {{ __('Возможно, ящик ещё синхронизируется или выбранная папка пуста.') }}
+          </div>
+        </div>
         <div
           v-for="e in emails"
           :key="e.uid"
