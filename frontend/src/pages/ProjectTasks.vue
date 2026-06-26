@@ -282,12 +282,21 @@
       </div>
     </template>
     <template #fields="{ fieldName, itemName }">
-      <div v-if="fieldName === 'due_date'" class="inline-flex" @click.stop>
+      <!-- NACIFRAH (ux-critique 2026-06-26 [d_projects]): нативный <input type=date>
+           показывает US-формат mm/dd/yyyy в русском UI. Overlay: видимый чип с русской
+           датой (formatDueDate → «19 июн» / плейсхолдер «Срок»), а нативный input скрыт
+           (opacity-0) поверх — ловит клик и открывает пикер, US-формат не виден. -->
+      <div v-if="fieldName === 'due_date'" class="relative inline-flex" @click.stop>
+        <span
+          class="pointer-events-none rounded px-1.5 py-0.5 text-xs font-medium"
+          :style="dueChipStyle(getRow(itemName, fieldName).label)"
+        >
+          {{ formatDueDate(getRow(itemName, fieldName).label) || __('Срок') }}
+        </span>
         <input
           type="date"
           :value="dueInputValue(getRow(itemName, fieldName).label)"
-          class="cursor-pointer rounded border-0 px-1.5 py-0.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-outline-gray-3"
-          :style="dueChipStyle(getRow(itemName, fieldName).label)"
+          class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           :title="__('Изменить срок')"
           @click.stop
           @change.stop="(e) => updateDue(itemName, e.target.value)"
