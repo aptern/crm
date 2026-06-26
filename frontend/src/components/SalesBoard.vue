@@ -404,9 +404,12 @@ function parseRows(rowsArr, cols = []) {
       let fieldType = cols?.find((col) => (col[key] || col.value) == row)?.[type]
 
       if (fieldType && ['Date', 'Datetime'].includes(fieldType)) {
-        // UX-фикс: раньше creation/modified исключались из форматирования и показывались
-        // на карточке СЫРЫМИ («2026-06-19 03:13:29.281415» с микросекундами). Форматируем всё.
         _rows[row] = formatDate(doc[row], '', true, fieldType == 'Datetime')
+      } else if (['creation', 'modified'].includes(row) && doc[row]) {
+        // UX-фикс: creation/modified показывались на карточке СЫРЫМИ
+        // («2026-06-19 03:13:29.281415» с микросекундами), т.к. в cols у них нет fieldType.
+        // Форматируем явно (всегда Datetime).
+        _rows[row] = formatDate(doc[row], '', true, true)
       }
       if (fieldType && fieldType == 'Currency') {
         // сумма — российский формат (разряды пробелами, без копеек, ₽)

@@ -115,7 +115,7 @@
           />
         </div>
         <div v-else class="truncate text-base">
-          {{ getRow(itemName, fieldName).label }}
+          {{ cellLabel(fieldName, getRow(itemName, fieldName).label) }}
         </div>
       </div>
     </template>
@@ -189,6 +189,7 @@ import CustomActions from '@/components/CustomActions.vue'
 import ArrowUpRightIcon from '@/components/Icons/ArrowUpRightIcon.vue'
 import TaskStatusIcon from '@/components/Icons/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
+import { PRIORITY_LABELS } from '@/utils/taskPriority'
 import Email2Icon from '@/components/Icons/Email2Icon.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
 import ViewControls from '@/components/ViewControls.vue'
@@ -229,6 +230,16 @@ function getRow(name, field) {
     return { label: value }
   }
   return getValue(rows.value?.find((row) => row.name == name)[field])
+}
+
+// UX-фикс: локализовать текст ячеек статуса/приоритета в списке задач (были сырые
+// англ. «Todo»/«In Progress»/«Urgent»/«Medium»). Статус — через __, приоритет — рус.
+// подписи из единого источника PRIORITY_LABELS (Критичный/Высокий/Средний/Низкий).
+function cellLabel(field, label) {
+  if (label == null || label === '') return label
+  if (field === 'priority') return PRIORITY_LABELS[label] || __(label)
+  if (field === 'status') return __(label)
+  return label
 }
 
 const rows = computed(() => {
