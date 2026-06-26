@@ -135,6 +135,7 @@
               <Button
                 icon="plus"
                 variant="ghost"
+                :tooltip="__('Добавить в этап')"
                 @click="options.onNewClick(column)"
               />
             </div>

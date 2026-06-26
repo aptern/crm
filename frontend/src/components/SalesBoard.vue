@@ -220,7 +220,8 @@
           variant="ghost"
           @click.stop.prevent
         >
-          <Button icon="plus" variant="ghost" />
+          <!-- NACIFRAH (ux-critique [d_leads] 126): тултип — раньше «+» был без подписи. -->
+          <Button icon="plus" variant="ghost" :tooltip="__('Создать задачу или заметку')" />
         </Dropdown>
       </div>
     </template>

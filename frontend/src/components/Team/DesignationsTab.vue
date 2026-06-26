@@ -18,7 +18,16 @@
           <div class="flex items-center gap-2">
             <FeatherIcon name="briefcase" class="h-4 w-4 text-ink-gray-5" />
             <span class="font-medium text-ink-gray-8">{{ d.label }}</span>
-            <span class="text-xs text-ink-gray-4">· {{ d.employees.length }}</span>
+            <!-- NACIFRAH (ux-critique [d_team_desig] 168-170): счётчик с иконкой+тултипом,
+                 только при >0 (иначе дублировал пустое состояние «Нет сотрудников»). -->
+            <span
+              v-if="d.employees.length"
+              class="flex items-center gap-1 text-xs text-ink-gray-4"
+              :title="__('Сотрудников на должности')"
+            >
+              <FeatherIcon name="users" class="h-3 w-3" />
+              {{ d.employees.length }}
+            </span>
           </div>
           <div v-if="isManager() && d.name" class="flex items-center gap-1">
             <Button
@@ -62,8 +71,18 @@
             </button>
           </div>
         </div>
-        <div v-else class="px-3 py-2 text-xs text-ink-gray-4">
-          {{ __('Нет сотрудников') }}
+        <!-- NACIFRAH (ux-critique [d_team_desig] 171): пустое состояние = активный CTA
+             для менеджера (совмещаем «нет данных» с действием), иначе просто подпись. -->
+        <div v-else class="px-3 py-2">
+          <button
+            v-if="isManager() && d.name"
+            class="flex items-center gap-1.5 text-xs text-ink-gray-5 hover:text-ink-gray-8"
+            @click="openAssign(d.name)"
+          >
+            <FeatherIcon name="user-plus" class="h-3.5 w-3.5" />
+            {{ __('Назначить сотрудника') }}
+          </button>
+          <span v-else class="text-xs text-ink-gray-4">{{ __('Нет сотрудников') }}</span>
         </div>
       </div>
     </div>
