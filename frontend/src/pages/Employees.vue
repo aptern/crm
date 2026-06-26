@@ -498,6 +498,7 @@
             type="select"
             :label="__('Роль')"
             :options="roleOptions"
+            :placeholder="__('Выберите роль…')"
             v-model="form.role"
           />
           <!-- K4: должность с инлайн-созданием новой -->
@@ -505,6 +506,7 @@
             type="select"
             :label="__('Должность')"
             :options="designationSelectOptions"
+            :placeholder="__('Выберите должность…')"
             v-model="form.designation"
           />
           <FormControl
@@ -518,6 +520,7 @@
             type="select"
             :label="__('Отдел')"
             :options="departmentOptions"
+            :placeholder="__('Выберите отдел…')"
             v-model="form.department"
           />
           <PhoneInput

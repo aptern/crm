@@ -70,12 +70,14 @@
         type="select"
         :label="__('Родительский отдел')"
         :options="parentOptions"
+        :placeholder="__('Выберите отдел…')"
         v-model="createForm.parent"
       />
       <FormControl
         type="select"
         :label="__('Руководитель')"
         :options="headOptions"
+        :placeholder="__('Выберите руководителя…')"
         v-model="createForm.head"
       />
       <ErrorMessage v-if="createError" :message="createError" />
