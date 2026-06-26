@@ -29,11 +29,9 @@
         placement="right"
       >
         <template #default="{ open }">
-          <!-- NACIFRAH (ux-critique [m_deal_detail] 108): на мобильном прячем ТЕКСТ статуса
-               (оставляем цветную точку+шеврон) — освобождаем место под имя сделки в шапке. -->
           <Button
             v-if="doc.status"
-            :label="isMobileView ? '' : statusLabel(doc.status)"
+            :label="statusLabel(doc.status)"
             :iconRight="open ? 'chevron-up' : 'chevron-down'"
           >
             <template #prefix>
@@ -580,7 +578,6 @@ import {
 import { getView } from '@/utils/view'
 import { formatPhoneDisplay, normalizePhoneToDigits } from '@/utils/ruFormat'
 import { napi } from '@/utils/api'
-import { isMobileView } from '@/composables/settings'
 import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
 import { statusesStore } from '@/stores/statuses'
