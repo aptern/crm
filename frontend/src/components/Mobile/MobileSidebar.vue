@@ -161,7 +161,7 @@ const _customLinks = [
   { label: 'Почта', icon: 'mail', to: 'Mail' },
   { label: 'База знаний', icon: 'book-open', to: 'KnowledgeBase' },
   { label: 'Команда', icon: 'users', to: 'Team', managerOnly: true },
-  { label: 'Параметры воронок', icon: 'sliders', to: 'Funnels', managerOnly: true },
+  { label: 'Воронки', icon: 'sliders', to: 'Funnels', managerOnly: true },
 ]
 const customLinks = computed(() =>
   _customLinks.filter(

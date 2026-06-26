@@ -44,7 +44,9 @@
     v-model="list"
     :options="{
       doctype,
-      amountField,
+      // NACIFRAH (ux-critique [d_leads] 122): у ЛИДОВ сумма всегда 0 ₽ (поле суммы — для
+      // сделок) → не показываем итоги/суммы на доске лидов; на сделках показываем.
+      amountField: isLead ? '' : amountField,
       boardFilters,
       getRoute,
       onNewClick: (column) => onNewClick?.(column),

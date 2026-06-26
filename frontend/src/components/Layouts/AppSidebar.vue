@@ -95,10 +95,11 @@
                     </div>
                   </template>
                 </Draggable>
-                <!-- «Параметры воронок» — всегда внизу блока -->
+                <!-- «Воронки» — всегда внизу блока. NACIFRAH (ux-critique [d_projects] 154):
+                     было «Параметры воронок» — обрезалось в сайдбаре. -->
                 <SidebarLink
                   v-if="isManager()"
-                  :label="__('Параметры воронок')"
+                  :label="__('Воронки')"
                   :to="{ name: 'Funnels' }"
                   :isCollapsed="isSidebarCollapsed"
                   class="my-[1.5px] text-ink-gray-6"

@@ -35,8 +35,10 @@ export function formatTime(seconds) {
 
 // Маски отображения даты задачи (единый источник — правило централизации заказчика).
 // Тянут: карточка задачи (TaskArea) и список задач (TasksListView) — не копируют.
-export const TASK_DATETIME_FORMAT = 'ddd, MMM D, YYYY | hh:mm a' // полный (тултип)
-export const TASK_DATE_SHORT_FORMAT = 'D MMM, hh:mm a' // короткий (инлайн)
+// NACIFRAH (ux-critique [d_tasks] 144-145): числовой РУ-формат вместо англ. месяца
+// «Jun» / «hh:mm a» — единый стиль с остальным приложением (ДД.ММ.ГГГГ, 24ч).
+export const TASK_DATETIME_FORMAT = 'DD.MM.YYYY HH:mm' // полный (тултип)
+export const TASK_DATE_SHORT_FORMAT = 'DD.MM HH:mm' // короткий (инлайн)
 
 export function formatDate(date, format, onlyDate = false, onlyTime = false) {
   if (!date) return ''
