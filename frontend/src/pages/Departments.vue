@@ -86,6 +86,22 @@
     </div>
   </SimpleModal>
 
+  <!-- B: переименование отдела -->
+  <SimpleModal v-model="showRename" :title="__('Переименовать отдел')">
+    <div class="flex flex-col gap-3">
+      <FormControl
+        :label="__('Название')"
+        v-model="renameForm.name"
+        :placeholder="__('Новое название отдела')"
+      />
+      <ErrorMessage v-if="renameError" :message="renameError" />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <Button :label="__('Отмена')" @click="showRename = false" />
+      <Button variant="solid" :label="__('Сохранить')" :loading="renaming" @click="doRename" />
+    </div>
+  </SimpleModal>
+
   <!-- выбор пользователя (руководитель отдела / CEO) -->
   <SimpleModal v-model="showUser" :title="userDlgTitle">
     <div class="flex flex-col gap-2">
@@ -246,6 +262,40 @@ async function doCreate() {
     createError.value = e?.messages?.[0] || __('Не удалось создать отдел')
   } finally {
     creating.value = false
+  }
+}
+
+// B (заказчик «нужна возможность редактировать отделы»): переименование отдела
+const showRename = ref(false)
+const renaming = ref(false)
+const renameError = ref('')
+const renameForm = reactive({ oldName: '', name: '' })
+function openRename(node) {
+  renameError.value = ''
+  renameForm.oldName = node.name
+  renameForm.name = node.label || node.name
+  showRename.value = true
+}
+async function doRename() {
+  renameError.value = ''
+  const nn = renameForm.name.trim()
+  if (!nn) {
+    renameError.value = __('Укажите название отдела')
+    return
+  }
+  renaming.value = true
+  try {
+    await call(napi('hr.rename_department'), {
+      old_name: renameForm.oldName,
+      new_name: nn,
+    })
+    showRename.value = false
+    await load()
+    toast.success(__('Отдел переименован'))
+  } catch (e) {
+    renameError.value = e?.messages?.[0] || __('Не удалось переименовать отдел')
+  } finally {
+    renaming.value = false
   }
 }
 
@@ -411,6 +461,7 @@ provide('orgApi', {
   setCEO: openSetCEO,
   setHead: openSetHead,
   addChild: openCreate,
+  rename: openRename,
   assign: openAssign,
   move: openMove,
   detach: detachEmp,

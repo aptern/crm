@@ -123,6 +123,11 @@ const actionItems = computed(() => {
   }
   return [
     {
+      label: __('Переименовать'),
+      icon: 'pencil',
+      onClick: () => api.rename(props.node),
+    },
+    {
       label: __('Добавить подотдел'),
       icon: 'plus',
       onClick: () => api.addChild(props.node.name),

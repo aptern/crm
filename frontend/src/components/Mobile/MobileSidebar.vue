@@ -141,6 +141,7 @@ import Settings from '@/components/Settings/Settings.vue'
 import { FeatherIcon } from 'frappe-ui'
 import { viewsStore } from '@/stores/views'
 import { usersStore } from '@/stores/users'
+import { canSeeDashboard, loadDashboardAccess } from '@/composables/dashboardAccess'
 import { unreadNotificationsCount } from '@/stores/notifications'
 import { computed, h } from 'vue'
 import {
@@ -155,7 +156,7 @@ const { isManager } = usersStore()
 // Маршруты совпадают с десктопным AppSidebar (_allCustomNav + Dashboard + Funnels).
 // Лиды/Сделки/Контакты/Организации/Заметки/Задачи/Звонки уже есть ниже в links.
 const _customLinks = [
-  { label: 'Dashboard', icon: 'grid', to: 'Dashboard' },
+  { label: 'Dashboard', icon: 'grid', to: 'Dashboard', dashOnly: true },
   { label: 'Проекты', icon: 'folder', to: 'Projects' },
   { label: 'Почта', icon: 'mail', to: 'Mail' },
   { label: 'База знаний', icon: 'book-open', to: 'KnowledgeBase' },
@@ -163,8 +164,13 @@ const _customLinks = [
   { label: 'Параметры воронок', icon: 'sliders', to: 'Funnels', managerOnly: true },
 ]
 const customLinks = computed(() =>
-  _customLinks.filter((l) => !l.managerOnly || isManager()),
+  _customLinks.filter(
+    (l) =>
+      (!l.managerOnly || isManager()) &&
+      (!l.dashOnly || canSeeDashboard.value),
+  ),
 )
+loadDashboardAccess() // C: подгрузить доступ к Дашборду (computed отреагирует)
 
 function openSettings() {
   sidebarOpened.value = false

@@ -332,6 +332,7 @@ import {
 import { usersStore } from '@/stores/users'
 import { sessionStore } from '@/stores/session'
 import { showSettings, activeSettingsPage } from '@/composables/settings'
+import { canSeeDashboard, loadDashboardAccess } from '@/composables/dashboardAccess'
 import { showChangePasswordModal } from '@/composables/modals'
 import { useBroadcast } from '@/composables/useBroadcast.js'
 import { FeatherIcon, call, toast } from 'frappe-ui'
@@ -371,6 +372,8 @@ const links = [
     label: 'Dashboard',
     icon: LucideLayoutDashboard,
     to: 'Dashboard',
+    // C: Дашборд показываем только тем, кому разрешено (админы + выданный доступ)
+    condition: () => canSeeDashboard.value,
   },
   {
     label: 'Leads',
@@ -585,6 +588,9 @@ async function onStdReorder() {
 _rebuildStdViews()
 
 onMounted(async () => {
+  // C: подгрузить доступ к Дашборду и пересобрать стандартные разделы (Дашборд скрыт без доступа)
+  await loadDashboardAccess()
+  _rebuildStdViews()
   try {
     const r = await call(napi('menu.get_menu_order'))
     menuOrder.value = r?.order || []

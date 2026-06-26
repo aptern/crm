@@ -18,6 +18,18 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('@/pages/Dashboard.vue'),
+    // C: прямой заход на Дашборд без доступа → редирект на Сделки
+    beforeEnter: async (to, from, next) => {
+      try {
+        const { loadDashboardAccess } = await import(
+          '@/composables/dashboardAccess'
+        )
+        const ok = await loadDashboardAccess()
+        next(ok ? undefined : { name: 'Deals' })
+      } catch (e) {
+        next()
+      }
+    },
   },
   {
     alias: '/projects',

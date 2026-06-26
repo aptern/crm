@@ -102,6 +102,44 @@
         </div>
       </div>
     </div>
+
+    <!-- C (заказчик): пофамильная выдача доступа к Дашборду -->
+    <div
+      v-if="data && data.can_set_policy && dashAccess"
+      class="mt-6 max-w-2xl rounded-lg border border-outline-gray-1 bg-surface-white p-4"
+    >
+      <div class="text-sm font-medium text-ink-gray-8">{{ __('Доступ к Дашборду') }}</div>
+      <p class="mt-1 text-xs text-ink-gray-5">
+        {{
+          __(
+            'Дашборд видят только администраторы и отмеченные здесь сотрудники. По умолчанию рядовым сотрудникам он недоступен.',
+          )
+        }}
+      </p>
+      <div v-if="dashAccess.length" class="mt-3 flex flex-col gap-1.5">
+        <label
+          v-for="u in dashAccess"
+          :key="u.user"
+          class="flex items-center gap-2 text-sm text-ink-gray-7"
+        >
+          <input
+            type="checkbox"
+            class="cursor-pointer"
+            :checked="u.always || u.allowed"
+            :disabled="u.always || dashSaving"
+            @change="toggleDash(u, $event.target.checked)"
+          />
+          <span>
+            {{ u.employee_name }}
+            <span class="text-ink-gray-4">({{ u.user }})</span>
+            <span v-if="u.always" class="ml-1 text-xs text-ink-gray-4">
+              — {{ __('администратор, всегда') }}</span
+            >
+          </span>
+        </label>
+      </div>
+      <p v-else class="mt-3 text-xs text-ink-gray-5">{{ __('Нет сотрудников с логином.') }}</p>
+    </div>
   </div>
 </template>
 
@@ -130,9 +168,41 @@ const matrixResource = createResource({
   auto: true,
   onSuccess(d) {
     data.value = d
-    if (d.can_set_policy) policyResource.fetch()
+    if (d.can_set_policy) {
+      policyResource.fetch()
+      dashResource.fetch()
+    }
   },
 })
+
+// C (заказчик): пофамильная выдача доступа к Дашборду (только админ)
+const dashAccess = ref(null)
+const dashSaving = ref(false)
+const dashResource = createResource({
+  url: napi('hr.list_dashboard_access'),
+  auto: false,
+  onSuccess(d) {
+    dashAccess.value = d
+  },
+})
+async function toggleDash(u, checked) {
+  if (u.always) return
+  const prev = u.allowed
+  u.allowed = checked
+  dashSaving.value = true
+  try {
+    await call(napi('hr.set_dashboard_access'), {
+      user: u.user,
+      allowed: checked ? 1 : 0,
+    })
+    toast.success(__('Сохранено'))
+  } catch (e) {
+    u.allowed = prev
+    toast.error(e?.messages?.[0] || __('Не удалось сохранить'))
+  } finally {
+    dashSaving.value = false
+  }
+}
 
 const policyResource = createResource({
   url: napi('hr.get_perms_policy'),

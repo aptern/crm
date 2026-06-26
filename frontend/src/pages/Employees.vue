@@ -483,9 +483,10 @@
       <div class="flex flex-col gap-3">
           <!-- M9: ФИО тремя полями; в системе показываем «Имя Фамилия» -->
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <FormControl :label="__('Фамилия')" v-model="form.last_name" :placeholder="__('Петров')" />
-            <FormControl :label="__('Имя')" v-model="form.first_name" :placeholder="__('Иван')" />
-            <FormControl :label="__('Отчество')" v-model="form.middle_name" :placeholder="__('Иванович')" />
+            <!-- autocomplete=off: иначе браузер автозаполняет Отчество сохранёнными именами (напр. «Administrator») -->
+            <FormControl :label="__('Фамилия')" v-model="form.last_name" :placeholder="__('Петров')" autocomplete="off" />
+            <FormControl :label="__('Имя')" v-model="form.first_name" :placeholder="__('Иван')" autocomplete="off" />
+            <FormControl :label="__('Отчество')" v-model="form.middle_name" :placeholder="__('Иванович')" autocomplete="off" />
           </div>
           <!-- Email НЕ спрашиваем: корпоративная почта создаётся автоматически по имени/фамилии
                и она же = логин (заказчик). -->
