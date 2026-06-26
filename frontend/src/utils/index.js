@@ -246,7 +246,7 @@ export function taskStatusOptions(action, data) {
   return options.map((status) => {
     return {
       icon: () => h(TaskStatusIcon, { status }),
-      label: status,
+      label: __(status), // UX-фикс: локализовать статус (Todo→К работе, In Progress→В процессе…)
       onClick: () => action && action(status, data),
     }
   })

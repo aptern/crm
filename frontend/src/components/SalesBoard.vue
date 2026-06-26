@@ -403,11 +403,9 @@ function parseRows(rowsArr, cols = []) {
 
       let fieldType = cols?.find((col) => (col[key] || col.value) == row)?.[type]
 
-      if (
-        fieldType &&
-        ['Date', 'Datetime'].includes(fieldType) &&
-        !['modified', 'creation'].includes(row)
-      ) {
+      if (fieldType && ['Date', 'Datetime'].includes(fieldType)) {
+        // UX-фикс: раньше creation/modified исключались из форматирования и показывались
+        // на карточке СЫРЫМИ («2026-06-19 03:13:29.281415» с микросекундами). Форматируем всё.
         _rows[row] = formatDate(doc[row], '', true, fieldType == 'Datetime')
       }
       if (fieldType && fieldType == 'Currency') {

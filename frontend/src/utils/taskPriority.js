@@ -11,15 +11,17 @@ export const TASK_PRIORITIES = [
   },
   {
     value: 'High',
+    // UX-фикс: Высокий = оранжевый (был красноватый, сливался с Критичным)
     label: 'Высокий',
-    chip: { backgroundColor: '#fef2f2', color: '#ef4444' },
-    active: { backgroundColor: '#f87171', color: '#fff' },
+    chip: { backgroundColor: '#ffedd5', color: '#ea580c' },
+    active: { backgroundColor: '#f97316', color: '#fff' },
   },
   {
     value: 'Medium',
+    // UX-фикс: Средний = янтарный (был ЗЕЛЁНЫЙ — зелёный читается как «ок» и доминировал над Высоким)
     label: 'Средний',
-    chip: { backgroundColor: '#dcfce7', color: '#15803d' },
-    active: { backgroundColor: '#16a34a', color: '#fff' },
+    chip: { backgroundColor: '#fef3c7', color: '#b45309' },
+    active: { backgroundColor: '#f59e0b', color: '#fff' },
   },
   {
     value: 'Low',
