@@ -150,9 +150,7 @@
                           "
                           doctype="User"
                           :filters="field.filters"
-                          :placeholder="
-                            __('Select') + ' ' + field.label + '...'
-                          "
+                          :placeholder="__('Выбрать {0}', [__(field.label)])"
                           :hideMe="true"
                           @change="(v) => fieldChange(v, field)"
                         >

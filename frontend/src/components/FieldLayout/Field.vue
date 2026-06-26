@@ -584,10 +584,13 @@ const resolvedHtml = computed(() => {
 })
 
 const getPlaceholder = (field) => {
-  // UX-фикс: авто-плейсхолдеры вида «Add Source…/Add Organization…» приходят на английском
-  // (field.placeholder) и не переведены → игнорируем «Add …» и строим локализованный
-  // плейсхолдер по label (label уже русский). Кастомные НЕ-«Add» плейсхолдеры оставляем.
-  if (field.placeholder && !/^Add\s/i.test(field.placeholder)) {
+  // UX-фикс: авто-плейсхолдеры приходят как «Add Organization…» (англ., upstream) ИЛИ
+  // «Добавить Organization…»/«Выбрать Lead Own…» (наш бэкенд пре-перевёл ГЛАГОЛ, но LABEL
+  // остался английским). Оба — авто-плейсхолдеры → игнорируем и пересобираем по
+  // переведённому label (__(field.label) — все стандартные labels есть в ru.csv).
+  // Кастомные (не-авто) плейсхолдеры оставляем как есть.
+  const autoPlaceholder = /^(Add|Select|Добавить|Выбрать|Введите)\s/i
+  if (field.placeholder && !autoPlaceholder.test(field.placeholder)) {
     return __(field.placeholder)
   }
   if (['Select', 'Link', 'Table', 'Table MultiSelect'].includes(field.fieldtype)) {

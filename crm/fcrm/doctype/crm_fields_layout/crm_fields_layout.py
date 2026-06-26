@@ -177,13 +177,15 @@ def get_permlevel_access(permission_type="write", doctype=None, parent_doctype=N
 
 
 def get_field_obj(field):
-	# UX-фикс: русский плейсхолдер (был англ. «Add …/Select …» в русском интерфейсе)
-	field["placeholder"] = field.get("placeholder") or "Добавить " + field.label + "…"
+	# UX-фикс: полностью русский плейсхолдер (был англ. «Add …/Select …», затем «Добавить
+	# Organization…» — глагол по-русски, но LABEL оставался англ.). Переводим и label через
+	# _() — все стандартные labels есть в переводах nacifrah (ru.csv грузится серверным _()).
+	field["placeholder"] = field.get("placeholder") or "Добавить " + _(field.label) + "…"
 
 	if field.fieldtype == "Link":
-		field["placeholder"] = field.get("placeholder") or "Выбрать " + field.label + "…"
+		field["placeholder"] = field.get("placeholder") or "Выбрать " + _(field.label) + "…"
 	elif field.fieldtype == "Select" and field.options:
-		field["placeholder"] = field.get("placeholder") or "Выбрать " + field.label + "…"
+		field["placeholder"] = field.get("placeholder") or "Выбрать " + _(field.label) + "…"
 		field["options"] = [{"label": option, "value": option} for option in field.options.split("\n")]
 
 	if field.read_only:
