@@ -199,7 +199,9 @@ function getNumberFormat(format = null) {
 
 function getCurrencySymbol(currencyCode) {
   try {
-    const formatter = new Intl.NumberFormat('en-US', {
+    // NACIFRAH (ux-critique [d_deal_detail] 233): локаль ru-RU, иначе RUB отдаёт КОД «RUB»
+    // вместо символа «₽» (₽ — символ RUB только в русской локали). Прочие валюты ($/€) — ок.
+    const formatter = new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 0,
