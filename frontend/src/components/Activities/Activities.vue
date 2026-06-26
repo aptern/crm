@@ -224,8 +224,13 @@
                 class="inline-flex items-center flex-wrap gap-1.5 text-ink-gray-8 font-medium"
               >
                 <span class="font-medium">{{ activity.owner_name }}</span>
+                <!-- NACIFRAH (ux-critique [m_deal_detail] 110): data.type = added/removed —
+                     эти же слова идут для изменений полей, поэтому НЕ переводим глобально,
+                     а строим согласованную фразу здесь: «добавил(а)/удалил(а) вложение {файл}». -->
                 <span class="text-ink-gray-5">{{
-                  __(activity.data.type)
+                  activity.data.type === 'removed'
+                    ? __('удалил(а) вложение')
+                    : __('добавил(а) вложение')
                 }}</span>
                 <a
                   v-if="activity.data.file_url"

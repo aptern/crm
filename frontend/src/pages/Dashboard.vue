@@ -119,11 +119,42 @@
 
     <div class="w-full overflow-y-scroll">
       <DashboardGrid
-        v-if="!dashboardItems.loading && dashboardItems.data"
+        v-if="!dashboardItems.loading && dashboardItems.data && dashboardItems.data.length"
         v-model="dashboardItems.data"
         class="pt-1"
         :editing="editing"
       />
+      <!-- NACIFRAH (ux-critique [d_dashboard] 62-65): явный empty-state вместо пустого
+           белого поля. Админу — CTA для добавления виджета, остальным — подсказка. -->
+      <div
+        v-else-if="!dashboardItems.loading && dashboardItems.data && !editing"
+        class="flex flex-col items-center justify-center gap-3 py-24 text-center"
+      >
+        <DashboardIcon class="h-10 w-10 text-ink-gray-4" />
+        <div class="text-lg font-medium text-ink-gray-8">
+          {{ __('Дашборд пока пуст') }}
+        </div>
+        <div class="max-w-sm text-p-base text-ink-gray-5">
+          {{
+            isAdmin()
+              ? __('Добавьте первый виджет, чтобы видеть метрики и графики по работе агентства.')
+              : __('Виджеты ещё не настроены. Обратитесь к администратору, чтобы наполнить дашборд.')
+          }}
+        </div>
+        <Button
+          v-if="isAdmin()"
+          variant="solid"
+          class="mt-1"
+          :label="__('Добавить виджет')"
+          iconLeft="plus"
+          @click="
+            () => {
+              enableEditing()
+              showAddChartModal = true
+            }
+          "
+        />
+      </div>
     </div>
   </div>
   <AddChartModal
@@ -139,6 +170,7 @@ import LucideRefreshCcw from '~icons/lucide/refresh-ccw'
 import LucideUndo2 from '~icons/lucide/undo-2'
 import LucidePenLine from '~icons/lucide/pen-line'
 import DashboardGrid from '@/components/Dashboard/DashboardGrid.vue'
+import DashboardIcon from '@/components/Icons/DashboardIcon.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ViewBreadcrumbs from '@/components/ViewBreadcrumbs.vue'
 import LayoutHeader from '@/components/LayoutHeader.vue'
