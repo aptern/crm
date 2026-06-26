@@ -184,6 +184,7 @@
 import HeartIcon from '@/components/Icons/HeartIcon.vue'
 import TaskStatusIcon from '@/components/Icons/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/Icons/TaskPriorityIcon.vue'
+import { PRIORITY_LABELS } from '@/utils/taskPriority'
 import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import RatingInput from '@/components/Controls/RatingInput.vue'
 import ListBulkActions from '@/components/ListBulkActions.vue'
@@ -241,6 +242,10 @@ const list = defineModel('list', { type: Object })
 
 function getLabel(label, column) {
   if (column.type === 'Duration') return formatDuration(label)
+  // UX-фикс: локализовать текст ячеек статуса/приоритета в СПИСКЕ задач (были сырые
+  // англ. Todo/In Progress/Urgent/Medium). Приоритет — рус. подписи PRIORITY_LABELS.
+  if (column.key === 'priority') return PRIORITY_LABELS[label] || __(label)
+  if (column.key === 'status') return __(label)
   if (column.options && isTranslatable(column.options)) return __(label)
   return label
 }
