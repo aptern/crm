@@ -53,3 +53,41 @@
 [data-reka-popper-content-wrapper] {
   z-index: 50 !important;
 }
+
+/* D (заказчик «списки → карточки на телефоне»): строки списка frappe-ui — это CSS-grid
+   (grid-template-columns задаётся inline по ширинам колонок), на 390px они шире экрана.
+   На мобильном превращаем строку в вертикальную карточку (flex-col), скрываем шапку
+   колонок. Только мобильный media-query — десктоп не затронут. */
+@media (max-width: 639px) {
+  /* шапка колонок списка — на карточках не нужна */
+  .grid.items-center.space-x-4.bg-surface-gray-2 {
+    display: none !important;
+  }
+  /* строка списка → карточка */
+  .grid.items-center.space-x-4.px-2 {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 10px 12px !important;
+    margin: 0 10px 8px 10px;
+    min-height: 0;
+  }
+  /* в колоночном режиме убрать горизонтальные отступы space-x между ячейками */
+  .grid.items-center.space-x-4.px-2 > * {
+    margin-left: 0 !important;
+    max-width: 100%;
+    width: auto;
+  }
+  /* первая значимая ячейка (имя/заголовок + аватар) — крупнее и заметнее */
+  .grid.items-center.space-x-4.px-2 > :nth-child(2) {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  /* служебная узкая колонка (чек/лайк, 14px) не должна растягивать карточку */
+  .grid.items-center.space-x-4.px-2 > :first-child {
+    align-self: flex-start;
+  }
+}
