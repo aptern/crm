@@ -196,7 +196,7 @@
                         }"
                       >
                         <div v-if="fields[value]" class="truncate">
-                          {{ fields[value] }}
+                          {{ fmtKanbanVal(fields[value]) }}
                         </div>
                       </slot>
                     </template>
@@ -288,13 +288,23 @@ import RefreshIcon from '@/components/Icons/RefreshIcon.vue'
 import { napi } from '@/utils/api'
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
-import { isTouchScreenDevice, colors, parseColor } from '@/utils'
+import { isTouchScreenDevice, colors, parseColor, formatDate } from '@/utils'
 import { statusesStore } from '@/stores/statuses'
 import Draggable from 'vuedraggable'
 import { Dropdown, Popover, Dialog, FormControl, call, toast } from 'frappe-ui'
 import { computed, ref, watch } from 'vue'
 import { useStorage } from '@vueuse/core'
 import { formatRub } from '@/utils/ruFormat'
+
+// UX-фикс: дефолтный рендер поля карточки канбана показывал сырые значения, в т.ч.
+// datetime из БД («2026-06-19 03:13:29.281415» с микросекундами). Форматируем дату.
+function fmtKanbanVal(val) {
+  if (typeof val !== 'string') return val
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(val))
+    return formatDate(val, '', true, true)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return formatDate(val, '', true, false)
+  return val
+}
 
 const { getDealStatus, getLeadStatus } = statusesStore()
 
