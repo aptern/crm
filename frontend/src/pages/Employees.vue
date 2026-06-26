@@ -20,12 +20,14 @@
       <FormControl
         type="select"
         :options="statusFilterOptions"
+        :placeholder="__('Все статусы')"
         v-model="filterStatus"
         class="w-44"
       />
       <FormControl
         type="select"
         :options="departmentFilterOptions"
+        :placeholder="__('Все отделы')"
         v-model="filterDept"
         class="w-52"
       />
