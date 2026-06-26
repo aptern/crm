@@ -199,7 +199,7 @@
           <MultipleAvatar :avatars="getRow(itemName, fieldName).label" size="xs" />
         </div>
         <div v-else class="truncate text-base">
-          {{ getRow(itemName, fieldName).label }}
+          {{ fmtMaybeDate(getRow(itemName, fieldName).label) }}
         </div>
       </div>
     </template>
@@ -329,6 +329,17 @@ function getRow(name, field) {
   }
   const r = rows.value?.find((row) => row.name == name)
   return getValue(r ? r[field] : '')
+}
+
+// UX-фикс: на карточке канбана конфигурируемое поле-дата иногда показывалось СЫРЫМ
+// («2026-06-19 03:13:29.281415» с микросекундами). Если значение похоже на сырой
+// datetime/date из БД — форматируем в человекочитаемый вид (дд.мм.гггг чч:мм).
+function fmtMaybeDate(val) {
+  if (typeof val !== 'string') return val
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(val))
+    return formatDate(val, '', true, true)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return formatDate(val, '', true, false)
+  return val
 }
 
 const rows = computed(() => {
