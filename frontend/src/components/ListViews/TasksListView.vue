@@ -70,6 +70,9 @@
               :label="item.full_name"
               size="sm"
             />
+            <!-- NACIFRAH: исполнитель не назначен — серый плейсхолдер вместо пустой ячейки
+                 (ux-critique 2026-06-26 [d_tasks]) -->
+            <span v-else class="text-base text-ink-gray-4">{{ __('Не назначен') }}</span>
           </div>
         </template>
         <template #default="{ label }">

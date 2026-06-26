@@ -219,8 +219,11 @@
           :isSidebarCollapsed="isSidebarCollapsed"
           :afterUpgrade="() => capture('upgrade_plan_from_trial_banner')"
         />
+        <!-- NACIFRAH: онбординг-виджет Frappe CRM («Getting started / Welcome to Frappe CRM»)
+             скрыт — это eval-cruft из апстрима, неуместный в живом продовом агентском ERP
+             (англоязычные строки + перекрывал доску сделок). См. ux-critique 2026-06-26 [d_deals_kanban]. -->
         <GettingStartedBanner
-          v-if="!isOnboardingStepsCompleted"
+          v-if="false"
           :isSidebarCollapsed="isSidebarCollapsed"
         />
       </div>

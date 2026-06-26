@@ -59,7 +59,7 @@
   </div>
 
   <!-- создание / подотдел -->
-  <SimpleModal v-model="showCreate" :title="__('Создать отдел')">
+  <SimpleModal v-model="showCreate" :title="__('Добавить отдел')">
     <div class="flex flex-col gap-3">
       <FormControl
         :label="__('Название')"
@@ -84,7 +84,7 @@
     </div>
     <div class="mt-4 flex justify-end gap-2">
       <Button :label="__('Отмена')" @click="showCreate = false" />
-      <Button variant="solid" :label="__('Создать')" :loading="creating" @click="doCreate" />
+      <Button variant="solid" :label="__('Добавить')" :loading="creating" @click="doCreate" />
     </div>
   </SimpleModal>
 
