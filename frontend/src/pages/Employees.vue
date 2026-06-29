@@ -492,8 +492,11 @@
           </div>
           <!-- Email НЕ спрашиваем: корпоративная почта создаётся автоматически по имени/фамилии
                и она же = логин (заказчик). -->
-          <p class="rounded-md bg-surface-gray-2 px-3 py-2 text-xs text-ink-gray-6">
-            {{ __('Логин и рабочая почта (имя.фамилия@nacifrah.ru) создадутся автоматически.') }}
+          <!-- NACIFRAH (ux-critique [d_form_hire] 247): инфо-callout (иконка + бордер-акцент),
+               чтобы не выглядел как пустое поле ввода. -->
+          <p class="flex items-start gap-1.5 rounded-md border-l-2 border-outline-gray-3 bg-surface-gray-2 px-3 py-2 text-xs text-ink-gray-6">
+            <FeatherIcon name="info" class="mt-px h-3.5 w-3.5 shrink-0 text-ink-gray-5" />
+            <span>{{ __('Логин и рабочая почта (имя.фамилия@nacifrah.ru) создадутся автоматически.') }}</span>
           </p>
           <FormControl type="password" :label="__('Пароль (необязательно)')" v-model="form.password" />
           <FormControl
