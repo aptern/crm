@@ -1,14 +1,19 @@
 <template>
   <LayoutHeader>
+    <!-- NACIFRAH (ux-critique [m_deal_detail] 108): статус был absolute right-0 и
+         перекрывал крошку → имя сделки пряталось под статусом. Перевели в flex-поток:
+         крошка flex-1 min-w-0 (сжимается/обрезается в своей зоне), статус shrink-0 справа. -->
     <header
-      class="relative flex h-10.5 items-center justify-between gap-2 py-2.5 pl-2"
+      class="flex h-10.5 items-center justify-between gap-2 py-2.5 pl-2 pr-2"
     >
-      <Breadcrumbs :items="breadcrumbs">
-        <template #prefix="{ item }">
-          <Icon v-if="item.icon" :icon="item.icon" class="mr-2 h-4" />
-        </template>
-      </Breadcrumbs>
-      <div class="absolute right-0">
+      <div class="min-w-0 flex-1 overflow-hidden">
+        <Breadcrumbs :items="breadcrumbs">
+          <template #prefix="{ item }">
+            <Icon v-if="item.icon" :icon="item.icon" class="mr-2 h-4" />
+          </template>
+        </Breadcrumbs>
+      </div>
+      <div class="shrink-0">
         <Dropdown
           v-if="doc"
           :options="
