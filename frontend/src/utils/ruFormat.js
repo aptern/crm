@@ -2,6 +2,22 @@
 // Маски/символ легко поменять здесь одной строкой (заказчик может прислать свой шаблон).
 
 import { flt } from '@/utils/numberFormat'
+import { dayjsLocal } from 'frappe-ui'
+
+// B (заказчик): дата на карточке доски — фактическая. Сегодня → время «чч:мм», иначе
+// «25 мая» (число + короткий месяц, родительный для мая). Единый источник формата.
+export const RU_MONTHS_SHORT = [
+  'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
+  'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+]
+export function formatCardDate(dateStr) {
+  if (!dateStr) return ''
+  const d = dayjsLocal(dateStr)
+  if (!d || !d.isValid || !d.isValid()) return ''
+  const now = dayjsLocal()
+  if (d.isSame(now, 'day')) return d.format('HH:mm')
+  return `${d.date()} ${RU_MONTHS_SHORT[d.month()]}`
+}
 
 // --- Телефон (I6) ---------------------------------------------------------
 // Только цифры (для хранения/поиска независимо от форматирования ввода).

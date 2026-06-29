@@ -138,8 +138,16 @@
     </template>
 
     <template #fields="{ fieldName, itemName }">
+      <!-- NACIFRAH (заказчик, B): не дублируем в теле карточки организацию/контакты/телефон/
+           email (организация = в названии, телефон/email = в иконках справа). Оставляем
+           ответственного и сумму. -->
       <div
-        v-if="getRow(itemName, fieldName).label && fieldName !== 'creation'"
+        v-if="
+          getRow(itemName, fieldName).label &&
+          !['creation', 'mobile_no', 'email', 'organization', 'lead_name', 'website'].includes(
+            fieldName,
+          )
+        "
         class="truncate flex items-center gap-2"
       >
         <div v-if="fieldName === 'status'">
@@ -210,22 +218,35 @@
     </template>
 
     <template #actions="{ itemName }">
+      <!-- B (заказчик, как в Bitrix): слева — фактическая дата создания (сегодня → время,
+           иначе «25 мая») серым у часов; справа — быстрые действия ИКОНКАМИ (почта,
+           мессенджер + звонок/заметка/задача из cardActions), а не выпадающим меню. -->
       <div class="flex gap-2 items-center justify-between">
-        <!-- единый вид: дата и время создания вместо иконок-счётчиков -->
-        <div class="flex items-center gap-1 text-xs text-ink-gray-4">
+        <div class="flex items-center gap-1 text-xs text-ink-gray-5 shrink-0">
           <FeatherIcon name="clock" class="h-3.5 w-3.5" />
-          <span>{{ getRow(itemName, 'creation').label }}</span>
+          <span>{{ formatCardDate(getRow(itemName, 'creation').raw) }}</span>
         </div>
-        <Dropdown
-          v-if="cardActions"
-          class="flex items-center gap-2"
-          :options="cardActions(itemName, getRow)"
-          variant="ghost"
-          @click.stop.prevent
-        >
-          <!-- NACIFRAH (ux-critique [d_leads] 126): тултип — раньше «+» был без подписи. -->
-          <Button icon="plus" variant="ghost" :tooltip="__('Создать задачу или заметку')" />
-        </Dropdown>
+        <div class="flex items-center gap-0.5" @click.stop.prevent>
+          <Tooltip v-if="cardEmail(itemName)" :text="cardEmail(itemName)">
+            <Button variant="ghost" @click.stop.prevent="onCardEmail(itemName)">
+              <template #icon><EmailIcon class="h-4 w-4 text-ink-gray-6" /></template>
+            </Button>
+          </Tooltip>
+          <Tooltip :text="__('Мессенджеры')">
+            <Button variant="ghost" @click.stop.prevent="onCardMessenger(itemName)">
+              <template #icon><TelegramIcon class="h-4 w-4 text-ink-gray-6" /></template>
+            </Button>
+          </Tooltip>
+          <Tooltip
+            v-for="act in cardActions ? cardActions(itemName, getRow) : []"
+            :key="act.label"
+            :text="act.label"
+          >
+            <Button variant="ghost" @click.stop.prevent="act.onClick()">
+              <template #icon><Vnode :vnode="act.icon" /></template>
+            </Button>
+          </Tooltip>
+        </div>
       </div>
     </template>
   </KanbanView>
@@ -262,6 +283,8 @@
 <script setup>
 import MultipleAvatar from '@/components/MultipleAvatar.vue'
 import PhoneIcon from '@/components/Icons/PhoneIcon.vue'
+import EmailIcon from '@/components/Icons/EmailIcon.vue'
+import TelegramIcon from '@/components/Icons/TelegramIcon.vue'
 import IndicatorIcon from '@/components/Icons/IndicatorIcon.vue'
 import EmptyState from '@/components/ListViews/EmptyState.vue'
 import KanbanView from '@/components/Kanban/KanbanView.vue'
@@ -271,11 +294,17 @@ import { usersStore } from '@/stores/users'
 import { organizationsStore } from '@/stores/organizations'
 import { statusesStore } from '@/stores/statuses'
 import { formatDate, timeAgo, website, formatTime } from '@/utils'
-import { formatRub, formatPhoneDisplay } from '@/utils/ruFormat'
+import { formatRub, formatPhoneDisplay, formatCardDate } from '@/utils/ruFormat'
 import { AMOUNT_FIELD } from '@/utils/cardFields'
-import { Tooltip, Avatar, Badge, Dropdown, FeatherIcon, Button } from 'frappe-ui'
-import { useRoute } from 'vue-router'
+import { Tooltip, Avatar, Badge, FeatherIcon, Button } from 'frappe-ui'
+import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, h } from 'vue'
+
+// B (заказчик, единый шаблон): рендер заранее созданного vnode-иконки из cardActions
+// (звонок/заметка/задача приходят как h(Icon,…) из обёртки) прямо в карточке — иконками,
+// не в выпадающем меню.
+const Vnode = (props) => props.vnode
+Vnode.props = { vnode: { type: [Object, Array, String], default: null } }
 
 const props = defineProps({
   doctype: { type: String, required: true },
@@ -311,7 +340,25 @@ const triggerResize = ref(1)
 const updatedPageCount = ref(20)
 
 const route = useRoute()
+const router = useRouter()
 const isLead = computed(() => props.doctype === 'CRM Lead')
+
+// B (заказчик): быстрые действия иконками прямо на карточке. Почта и мессенджер живут
+// в едином шаблоне (одинаковы во всех воронках); звонок/заметка/задача приходят из
+// обёртки через cardActions (нужны doctype-специфичные модалки/телефония).
+function cardEmail(name) {
+  return getRow(name, 'email')?.label || ''
+}
+function onCardEmail(name) {
+  const e = cardEmail(name)
+  if (e) window.open(`mailto:${e}`, '_blank')
+}
+// Открыть карточку сразу на вкладке «Мессенджеры»: useActiveTabManager слушает hash
+// (#telegram → вкладка name='Telegram'), getRoute даёт целевой маршрут записи.
+function onCardMessenger(name) {
+  const target = props.getRoute?.({ name })
+  if (target) router.push({ ...target, hash: '#telegram' })
+}
 
 const { getFormattedPercent, getFormattedFloat, getFormattedCurrency } = getMeta(
   props.doctype,
@@ -489,6 +536,7 @@ function parseRows(rowsArr, cols = []) {
         _rows[row] = {
           label: formatDate(doc[row], '', true, true),
           timeAgo: __(timeAgo(doc[row])),
+          raw: doc[row], // B: для formatCardDate на карточке (сегодня → время, иначе «25 мая»)
         }
       } else if (
         ['first_response_time', 'first_responded_on', 'response_by'].includes(row)

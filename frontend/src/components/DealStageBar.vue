@@ -14,7 +14,7 @@
         :key="st.stage"
         type="button"
         class="relative flex h-8 shrink-0 items-center whitespace-nowrap pl-4 pr-3 text-sm transition-colors first:rounded-l-md last:rounded-r-md"
-        :class="stageClass(st)"
+        :class="stageClass(st, i)"
         :style="i === 0 ? {} : { marginLeft: '-9px' }"
         :disabled="busy"
         :title="st.stage"
@@ -25,7 +25,7 @@
         <span
           v-if="i !== currentFunnel.stages.length - 1"
           class="dsb-chevron"
-          :style="{ borderLeftColor: segmentHex(st) }"
+          :style="{ borderLeftColor: segmentHex(st, i) }"
         />
         <span class="relative z-10 max-w-[160px] truncate">
           {{ stageLabel(st) }}
@@ -150,6 +150,16 @@ function isActive(st) {
   return st.stage === activeStage.value
 }
 
+// A (заказчик, как в Bitrix): бар-«прогресс» — этапы ДО текущего включительно залиты
+// своим цветом, будущие — серые. Индекс текущего этапа в воронке.
+const activeIndex = computed(() => {
+  const stages = currentFunnel.value?.stages || []
+  return stages.findIndex((s) => s.stage === activeStage.value)
+})
+function isFilled(i) {
+  return activeIndex.value >= 0 && i <= activeIndex.value
+}
+
 // HEX-палитра этапов (по именам цветов из бэкенда). Инлайн-стиль вместо tailwind-класса —
 // динамические bg-${color} вырезаются purge'ом (safelist только !text/!bg), поэтому цвет
 // «шеврона» (треугольник) задаём напрямую цветом. Активный сегмент использует tailwind
@@ -189,9 +199,9 @@ function activeBgClass(st) {
   return `!bg-${c}-100 !text-${c}-800`
 }
 
-// HEX-цвет «шеврона»: для активного — фон сегмента (-100 светлый), для неактивного — общий серый фон.
-function segmentHex(st) {
-  if (isActive(st)) {
+// HEX-цвет «шеврона»: залитые этапы (до текущего вкл.) — их -100 фон; будущие — серый.
+function segmentHex(st, i) {
+  if (isFilled(i)) {
     const c = stageColorName(st)
     return light100Hex(c)
   }
@@ -225,12 +235,13 @@ function light100Hex(c) {
   return HEX_100[c] || HEX_100.gray
 }
 
-// класс сегмента: активный — цветной (!bg/!text), остальные — серый pill.
-function stageClass(st) {
-  if (isActive(st)) {
-    return [activeBgClass(st), 'font-medium']
+// класс сегмента: залитые (до текущего вкл.) — цветной (!bg/!text), текущий выделен
+// жирнее; будущие — серый pill с ховером (A: как прогресс-бар Bitrix).
+function stageClass(st, i) {
+  if (isFilled(i)) {
+    return [activeBgClass(st), i === activeIndex.value ? 'font-semibold' : 'font-medium']
   }
-  return ['bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3']
+  return ['bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3']
 }
 
 // ── клик по этапу: смена этапа в ТЕКУЩЕЙ воронке ──
