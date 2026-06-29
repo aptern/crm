@@ -5,10 +5,10 @@ import { flt } from '@/utils/numberFormat'
 import { dayjsLocal } from 'frappe-ui'
 
 // B (заказчик): дата на карточке доски — фактическая. Сегодня → время «чч:мм», иначе
-// «25 мая» (число + короткий месяц, родительный для мая). Единый источник формата.
-export const RU_MONTHS_SHORT = [
-  'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
-  'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+// «25 мая» (число + месяц в родительном падеже). Единый источник формата.
+export const RU_MONTHS_GEN = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
 ]
 export function formatCardDate(dateStr) {
   if (!dateStr) return ''
@@ -16,7 +16,7 @@ export function formatCardDate(dateStr) {
   if (!d || !d.isValid || !d.isValid()) return ''
   const now = dayjsLocal()
   if (d.isSame(now, 'day')) return d.format('HH:mm')
-  return `${d.date()} ${RU_MONTHS_SHORT[d.month()]}`
+  return `${d.date()} ${RU_MONTHS_GEN[d.month()]}`
 }
 
 // --- Телефон (I6) ---------------------------------------------------------

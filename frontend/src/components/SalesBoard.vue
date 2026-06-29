@@ -144,7 +144,7 @@
       <div
         v-if="
           getRow(itemName, fieldName).label &&
-          !['creation', 'mobile_no', 'email', 'organization', 'lead_name', 'website'].includes(
+          !['creation', 'mobile_no', 'phone', 'email', 'organization', 'lead_name', 'website'].includes(
             fieldName,
           )
         "
