@@ -90,9 +90,10 @@
             />
           </div>
         </Tooltip>
-        <div class="flex flex-col gap-2.5 truncate text-ink-gray-9">
+        <div class="flex min-w-0 flex-col gap-2.5 text-ink-gray-9">
           <Tooltip :text="organization?.name || __('Set an Organization')">
-            <div class="truncate text-2xl font-medium">
+            <!-- NACIFRAH (заказчик, C): имя сделки переносится на строки, видно ПОЛНОСТЬЮ. -->
+            <div class="break-words text-2xl font-medium">
               {{ title }}
             </div>
           </Tooltip>

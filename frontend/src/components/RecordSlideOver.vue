@@ -6,7 +6,13 @@
   <Teleport to="body">
     <Transition name="rso-overlay">
       <div v-if="show" class="fixed inset-0 z-40">
-        <div class="absolute inset-0 bg-black/30" @click="close" />
+        <!-- D (заказчик): в раскрытом режиме оверлей начинается ПОСЛЕ меню (не затемняет
+             меню, клик по меню/«Свернуть» проходит) и клик по нему НЕ закрывает попап. -->
+        <div
+          class="absolute inset-y-0 right-0 bg-black/30"
+          :style="{ left: dimLeft }"
+          @click="onOverlayClick"
+        />
         <Transition name="rso-panel">
           <div
             v-if="show"
@@ -15,7 +21,7 @@
               width: isMobileView
                 ? '100%'
                 : fullscreen
-                  ? 'calc(100% - 15rem)'
+                  ? expandedPanelWidth
                   : DETAIL_PANEL_WIDTH,
             }"
           >
@@ -80,7 +86,14 @@
 import { computed, defineAsyncComponent, ref, watch, onErrorCaptured } from 'vue'
 import { Button } from 'frappe-ui'
 import { useRoute, useRouter } from 'vue-router'
-import { isMobileView, DETAIL_PANEL_WIDTH } from '@/composables/settings'
+import {
+  isMobileView,
+  DETAIL_PANEL_WIDTH,
+  expandedPanelWidth,
+  isSidebarCollapsed,
+  SIDEBAR_WIDTH_EXPANDED,
+  SIDEBAR_WIDTH_COLLAPSED,
+} from '@/composables/settings'
 import { recordSlideOverStore } from '@/stores/recordSlideOver'
 
 const Deal = defineAsyncComponent(() => import('@/pages/Deal.vue'))
@@ -102,6 +115,19 @@ const compProps = computed(() =>
 const renderError = ref(false)
 // I29(c): по умолчанию DETAIL_PANEL_WIDTH (F1=80%), тоггл «на весь экран» (до левого меню). Сброс при закрытии.
 const fullscreen = ref(false)
+// D (заказчик): в раскрытом режиме оверлей-затемнение начинается ПОСЛЕ меню (left = ширина
+// меню), иначе — полноэкранный (left=0). Клик по оверлею закрывает ТОЛЬКО в обычном режиме.
+const dimLeft = computed(() =>
+  fullscreen.value
+    ? isSidebarCollapsed.value
+      ? SIDEBAR_WIDTH_COLLAPSED
+      : SIDEBAR_WIDTH_EXPANDED
+    : '0px',
+)
+function onOverlayClick() {
+  if (fullscreen.value) return
+  close()
+}
 onErrorCaptured(() => {
   renderError.value = true
   return false

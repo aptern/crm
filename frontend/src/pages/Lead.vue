@@ -115,9 +115,10 @@
                 </div>
               </component>
             </div>
-            <div class="flex flex-col gap-2.5 truncate">
+            <div class="flex min-w-0 flex-col gap-2.5">
               <Tooltip :text="doc.lead_name || __('Set First Name')">
-                <div class="truncate text-2xl font-medium text-ink-gray-9">
+                <!-- NACIFRAH (заказчик, C): имя лида переносится на строки, видно ПОЛНОСТЬЮ. -->
+                <div class="break-words text-2xl font-medium text-ink-gray-9">
                   {{ title }}
                 </div>
               </Tooltip>

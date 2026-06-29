@@ -5,7 +5,12 @@
   <Teleport to="body">
     <Transition name="so-overlay">
       <div v-if="show" class="fixed inset-0 z-40">
-        <div class="absolute inset-0 bg-black/30" @click="show = false" />
+        <!-- D (заказчик): в раскрытом режиме оверлей после меню (меню не затемнено, клик не закрывает). -->
+        <div
+          class="absolute inset-y-0 right-0 bg-black/30"
+          :style="{ left: dimLeft }"
+          @click="onOverlayClick"
+        />
         <Transition :name="asPopup ? 'so-pop' : 'so-panel'">
           <div
             v-if="show"
@@ -21,7 +26,7 @@
                     width: isMobileView
                       ? '100%'
                       : fullscreen
-                        ? 'calc(100% - 15rem)'
+                        ? expandedPanelWidth
                         : DETAIL_PANEL_WIDTH,
                   }
             "
@@ -133,7 +138,14 @@ import { useDocument } from '@/data/document'
 import { globalStore } from '@/stores/global'
 import { usersStore } from '@/stores/users'
 import { showQuickEntryModal, quickEntryProps } from '@/composables/modals'
-import { isMobileView, DETAIL_PANEL_WIDTH } from '@/composables/settings'
+import {
+  isMobileView,
+  DETAIL_PANEL_WIDTH,
+  expandedPanelWidth,
+  isSidebarCollapsed,
+  SIDEBAR_WIDTH_EXPANDED,
+  SIDEBAR_WIDTH_COLLAPSED,
+} from '@/composables/settings'
 import { setupCustomizations } from '@/utils'
 import { call, createResource, toast } from 'frappe-ui'
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
@@ -177,6 +189,20 @@ const layout = createResource({
 
 const error = ref(null)
 const editMode = computed(() => Boolean(document.doc?.name))
+
+// D (заказчик): затемнение оверлея — после меню только в раскрытом не-popup режиме; клик
+// закрывает в обычном режиме и в popup (создание), но НЕ в раскрытом слайд-овере.
+const dimLeft = computed(() =>
+  !asPopup.value && fullscreen.value
+    ? isSidebarCollapsed.value
+      ? SIDEBAR_WIDTH_COLLAPSED
+      : SIDEBAR_WIDTH_EXPANDED
+    : '0px',
+)
+function onOverlayClick() {
+  if (!asPopup.value && fullscreen.value) return
+  show.value = false
+}
 
 // I22: попап показываем только в режиме создания; открытие/детали остаются slide-over.
 const asPopup = computed(() => props.popup && !editMode.value)
