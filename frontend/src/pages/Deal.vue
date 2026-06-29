@@ -792,8 +792,15 @@ const breadcrumbs = computed(() => {
 })
 
 const title = computed(() => {
+  // NACIFRAH (заказчик, п.11): имя сделки = организация; если title_field/организация
+  // пусты — показываем organization_name (Data), и лишь в крайнем случае тех.код.
   let t = doctypeMeta.value?.title_field || 'name'
-  return doc.value?.[t] || props.dealId
+  return (
+    doc.value?.[t] ||
+    doc.value?.organization ||
+    doc.value?.organization_name ||
+    props.dealId
+  )
 })
 
 const statuses = computed(() => {

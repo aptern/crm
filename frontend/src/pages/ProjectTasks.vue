@@ -187,6 +187,15 @@
   >
     <template #title="{ titleField, itemName }">
       <div class="flex flex-col gap-1">
+      <!-- NACIFRAH (заказчик, п.15): имя проекта первой строкой — карточки задач разных
+           проектов с одинаковыми заголовками иначе неразличимы. -->
+      <div
+        v-if="taskProjectName(itemName)"
+        class="truncate text-[11px] font-medium text-ink-gray-5"
+        :title="taskProjectName(itemName)"
+      >
+        {{ taskProjectName(itemName) }}
+      </div>
       <div class="flex items-center gap-2">
         <div v-if="titleField === 'status'">
           <TaskStatusIcon :status="getRow(itemName, titleField).label" />

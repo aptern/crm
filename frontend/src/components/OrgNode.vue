@@ -36,9 +36,20 @@
       </div>
 
       <!-- руководитель / CEO -->
+      <!-- NACIFRAH (заказчик, п.15): пустой слот руководителя — явный кликабельный CTA
+           «Назначить…» для менеджера (пунктир + ховер), а не пассивная подпись. -->
       <div
         class="flex items-center gap-2 rounded-lg px-1.5 py-1"
-        :class="head ? 'bg-surface-gray-1' : ''"
+        :class="
+          head
+            ? 'bg-surface-gray-1'
+            : api.isManager
+              ? 'cursor-pointer border border-dashed border-outline-gray-3 hover:bg-surface-gray-2'
+              : ''
+        "
+        @click="
+          !head && api.isManager && (isCompany ? api.setCEO() : api.setHead(node.name))
+        "
       >
         <Avatar
           v-if="head"
@@ -50,13 +61,21 @@
           v-else
           class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-4"
         >
-          <FeatherIcon name="user" class="h-3 w-3" />
+          <FeatherIcon :name="api.isManager ? 'plus' : 'user'" class="h-3 w-3" />
         </div>
         <div class="min-w-0 flex-1">
           <div class="truncate text-xs font-medium text-ink-gray-7">
-            {{ head ? head.full_name : __('Руководитель не назначен') }}
+            {{
+              head
+                ? head.full_name
+                : api.isManager
+                  ? isCompany
+                    ? __('Назначить директора')
+                    : __('Назначить руководителя')
+                  : __('Руководитель не назначен')
+            }}
           </div>
-          <div class="text-[10px] uppercase tracking-wide text-ink-gray-4">
+          <div v-if="head" class="text-[10px] uppercase tracking-wide text-ink-gray-4">
             {{ isCompany ? __('Генеральный директор') : __('руководитель') }}
           </div>
         </div>

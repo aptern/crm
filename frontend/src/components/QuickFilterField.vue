@@ -11,7 +11,7 @@
     v-model="filter.value"
     class="form-control cursor-pointer [&_select]:cursor-pointer"
     type="select"
-    :options="filter.options"
+    :options="selectOptions"
     :placeholder="__(filter.label)"
     @update:modelValue="updateFilter(filter, $event)"
   />
@@ -42,13 +42,23 @@
 import Link from '@/components/Controls/Link.vue'
 import { FormControl, DatePicker, DateTimePicker } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed } from 'vue'
 
 const props = defineProps({
   filter: { type: Object, required: true },
 })
 
 const filter = reactive(props.filter)
+
+// NACIFRAH (заказчик, п.15): пустой вариант select-фильтра показываем как «{Лейбл}: любой»
+// вместо пустой строки (раньше «Приоритет» выглядел как незаполненный «Select option»).
+const selectOptions = computed(() => {
+  const lbl = __(filter.label || '')
+  const blank = lbl ? `${lbl}: ${__('любой')}` : __('любой')
+  return (filter.options || []).map((o) =>
+    o && typeof o === 'object' && o.value === '' && !o.label ? { ...o, label: blank } : o,
+  )
+})
 
 const emit = defineEmits(['applyQuickFilter'])
 

@@ -168,6 +168,11 @@ async function createNewLead() {
           error.value = __('Invalid email address')
           return error.value
         }
+        // NACIFRAH (заказчик, п.10): у лида обязателен хотя бы один контакт — телефон ИЛИ email.
+        if (!lead.doc.mobile_no && !lead.doc.phone && !lead.doc.email) {
+          error.value = __('Укажите телефон или email')
+          return error.value
+        }
         if (!lead.doc.status) {
           error.value = __('Status is required')
           return error.value

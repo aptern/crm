@@ -124,15 +124,14 @@
             :label="getRow(itemName, titleField).value"
           />
         </div>
+        <!-- NACIFRAH (заказчик, п.11): заголовок карточки НЕ обрезаем «…», а переносим на
+             строки — имя сделки/лида должно быть видно ПОЛНОСТЬЮ. break-words — для длинных
+             слов/email без пробелов. (Заменили прежний truncate+тултип на полный перенос.) -->
         <div
           v-else-if="getRow(itemName, titleField).label"
-          class="min-w-0 truncate text-base"
+          class="min-w-0 break-words text-base"
         >
-          <!-- NACIFRAH (ux-critique [d_leads] 43): полное имя по наведению — заголовки
-               карточек лидов/сделок обрезаются, тултип показывает полное значение. -->
-          <Tooltip :text="getRow(itemName, titleField).label">
-            <div class="truncate">{{ getRow(itemName, titleField).label }}</div>
-          </Tooltip>
+          {{ getRow(itemName, titleField).label }}
         </div>
         <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
       </div>
