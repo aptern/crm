@@ -91,12 +91,23 @@
           </div>
         </Tooltip>
         <div class="flex min-w-0 flex-col gap-2.5 text-ink-gray-9">
-          <Tooltip :text="organization?.name || __('Set an Organization')">
-            <!-- NACIFRAH (заказчик, C): имя сделки переносится на строки, видно ПОЛНОСТЬЮ. -->
-            <div class="break-words text-2xl font-medium">
-              {{ title }}
-            </div>
-          </Tooltip>
+          <!-- NACIFRAH (заказчик, C): заголовок переносится (виден полностью) + карандаш
+               ручного переименования (по ховеру). -->
+          <div class="group/ttl flex min-w-0 items-start gap-1">
+            <Tooltip :text="organization?.name || __('Set an Organization')">
+              <div class="break-words text-2xl font-medium">
+                {{ title }}
+              </div>
+            </Tooltip>
+            <Button
+              variant="ghost"
+              class="mt-0.5 shrink-0 opacity-0 transition group-hover/ttl:opacity-100"
+              :tooltip="__('Переименовать сделку')"
+              @click="openRename"
+            >
+              <template #icon><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+            </Button>
+          </div>
           <div class="flex gap-1.5">
             <Button
               v-if="callEnabled"
@@ -534,6 +545,30 @@
     :dealTitle="title"
     @merged="onDealsMerged"
   />
+
+  <!-- NACIFRAH (заказчик, C): ручное переименование сделки. Пусто → заголовок снова = организация. -->
+  <Dialog
+    v-model="showRename"
+    :options="{
+      title: __('Переименовать сделку'),
+      actions: [
+        { label: __('Сохранить'), variant: 'solid', onClick: saveRename, loading: renameBusy },
+      ],
+    }"
+  >
+    <template #body-content>
+      <FormControl
+        v-model="renameValue"
+        type="text"
+        :label="__('Название сделки')"
+        :placeholder="__('Напр.: ООО «Ромашка» — сайт под ключ')"
+        @keyup.enter="saveRename"
+      />
+      <p class="mt-2 text-p-sm text-ink-gray-5">
+        {{ __('Пусто — название вернётся к организации автоматически.') }}
+      </p>
+    </template>
+  </Dialog>
 </template>
 <script setup>
 import DeleteLinkedDocModal from '@/components/DeleteLinkedDocModal.vue'
@@ -797,6 +832,7 @@ const title = computed(() => {
   // пусты — показываем organization_name (Data), и лишь в крайнем случае тех.код.
   let t = doctypeMeta.value?.title_field || 'name'
   return (
+    doc.value?.nacifrah_deal_title || // C (заказчик): ручное название имеет приоритет
     doc.value?.[t] ||
     doc.value?.organization ||
     doc.value?.organization_name ||
@@ -1190,5 +1226,33 @@ function reloadResources(data) {
 function onStageBarChanged() {
   document.reload?.()
   sections.reload()
+}
+
+// NACIFRAH (заказчик, C): ручное переименование сделки. Сохраняем nacifrah_deal_title
+// через единый бэкенд-метод (права проверяются там), затем перечитываем шапку.
+const showRename = ref(false)
+const renameValue = ref('')
+const renameBusy = ref(false)
+function openRename() {
+  renameValue.value = doc.value?.nacifrah_deal_title || ''
+  showRename.value = true
+}
+async function saveRename() {
+  if (renameBusy.value) return
+  renameBusy.value = true
+  try {
+    await call(napi('funnels.rename_record'), {
+      doctype: 'CRM Deal',
+      name: props.dealId,
+      title: renameValue.value,
+    })
+    showRename.value = false
+    document.reload?.()
+    toast.success(__('Название сделки обновлено'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось переименовать'))
+  } finally {
+    renameBusy.value = false
+  }
 }
 </script>

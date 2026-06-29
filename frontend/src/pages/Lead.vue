@@ -116,12 +116,23 @@
               </component>
             </div>
             <div class="flex min-w-0 flex-col gap-2.5">
-              <Tooltip :text="doc.lead_name || __('Set First Name')">
-                <!-- NACIFRAH (заказчик, C): имя лида переносится на строки, видно ПОЛНОСТЬЮ. -->
-                <div class="break-words text-2xl font-medium text-ink-gray-9">
-                  {{ title }}
-                </div>
-              </Tooltip>
+              <!-- NACIFRAH (заказчик, C): заголовок переносится (виден полностью) +
+                   карандаш ручного переименования (по ховеру). -->
+              <div class="group/ttl flex min-w-0 items-start gap-1">
+                <Tooltip :text="doc.lead_name || __('Set First Name')">
+                  <div class="break-words text-2xl font-medium text-ink-gray-9">
+                    {{ title }}
+                  </div>
+                </Tooltip>
+                <Button
+                  variant="ghost"
+                  class="mt-0.5 shrink-0 opacity-0 transition group-hover/ttl:opacity-100"
+                  :tooltip="__('Переименовать лид')"
+                  @click="openRename"
+                >
+                  <template #icon><FeatherIcon name="edit-2" class="h-4 w-4" /></template>
+                </Button>
+              </div>
               <div class="flex gap-1.5">
                 <Button
                   v-if="callEnabled"
@@ -232,6 +243,30 @@
     doctype="CRM Lead"
     :document="document"
   />
+
+  <!-- NACIFRAH (заказчик, C): ручное переименование лида. Пусто → имя снова авто-формат. -->
+  <Dialog
+    v-model="showRename"
+    :options="{
+      title: __('Переименовать лид'),
+      actions: [
+        { label: __('Сохранить'), variant: 'solid', onClick: saveRename, loading: renameBusy },
+      ],
+    }"
+  >
+    <template #body-content>
+      <FormControl
+        v-model="renameValue"
+        type="text"
+        :label="__('Имя лида')"
+        :placeholder="__('Напр.: ООО «Ромашка» — входящая заявка')"
+        @keyup.enter="saveRename"
+      />
+      <p class="mt-2 text-p-sm text-ink-gray-5">
+        {{ __('Пусто — имя вернётся к автоформату «Организация / Имя / Телефон».') }}
+      </p>
+    </template>
+  </Dialog>
 </template>
 <script setup>
 import DeleteLinkedDocModal from '@/components/DeleteLinkedDocModal.vue'
@@ -269,6 +304,7 @@ import {
   isTranslatable,
 } from '@/utils'
 import { getView } from '@/utils/view'
+import { napi } from '@/utils/api'
 import { getSettings } from '@/stores/settings'
 import { globalStore } from '@/stores/global'
 import { statusesStore } from '@/stores/statuses'
@@ -397,6 +433,35 @@ const title = computed(() => {
   let t = doctypeMeta.value?.title_field || 'name'
   return doc.value?.[t] || props.leadId
 })
+
+// NACIFRAH (заказчик, C): ручное переименование лида. Бэкенд ставит lead_name + флаг
+// nacifrah_manual_name (автоформат больше не перетирает); пусто → возврат к автоформату.
+const showRename = ref(false)
+const renameValue = ref('')
+const renameBusy = ref(false)
+function openRename() {
+  // при ручном имени показываем его; в авто-режиме — текущее имя как стартовое
+  renameValue.value = doc.value?.nacifrah_manual_name ? doc.value?.lead_name || '' : ''
+  showRename.value = true
+}
+async function saveRename() {
+  if (renameBusy.value) return
+  renameBusy.value = true
+  try {
+    await call(napi('funnels.rename_record'), {
+      doctype: 'CRM Lead',
+      name: props.leadId,
+      title: renameValue.value,
+    })
+    showRename.value = false
+    document.reload?.()
+    toast.success(__('Имя лида обновлено'))
+  } catch (e) {
+    toast.error(e?.messages?.[0] || __('Не удалось переименовать'))
+  } finally {
+    renameBusy.value = false
+  }
+}
 
 const statuses = computed(() => {
   let customStatuses = document.statuses?.length
