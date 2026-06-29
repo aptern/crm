@@ -57,7 +57,7 @@
             {{ head ? head.full_name : __('Руководитель не назначен') }}
           </div>
           <div class="text-[10px] uppercase tracking-wide text-ink-gray-4">
-            {{ isCompany ? 'CEO' : __('руководитель') }}
+            {{ isCompany ? __('Генеральный директор') : __('руководитель') }}
           </div>
         </div>
       </div>

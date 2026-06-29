@@ -170,7 +170,7 @@
         <!-- I5/I6: строка поиска (имя/телефон) -->
         <FormControl
           type="text"
-          :placeholder="__('Поиск: имя или телефон…')"
+          :placeholder="__('Поиск')"
           v-model="searchTerm"
           @input="onSearchInput"
           class="w-48"

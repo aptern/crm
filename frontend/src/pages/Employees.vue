@@ -34,7 +34,7 @@
       <!-- K3: поиск по всем полям карточки сотрудника -->
       <FormControl
         type="text"
-        :placeholder="__('Поиск: имя, должность, телефон, логин…')"
+        :placeholder="__('Поиск сотрудника…')"
         v-model="searchQuery"
         class="w-72"
       />
@@ -486,8 +486,8 @@
           <!-- M9: ФИО тремя полями; в системе показываем «Имя Фамилия» -->
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <!-- autocomplete=off: иначе браузер автозаполняет Отчество сохранёнными именами (напр. «Administrator») -->
-            <FormControl :label="__('Фамилия')" v-model="form.last_name" :placeholder="__('Петров')" autocomplete="off" />
-            <FormControl :label="__('Имя')" v-model="form.first_name" :placeholder="__('Иван')" autocomplete="off" />
+            <FormControl :label="__('Фамилия') + ' *'" v-model="form.last_name" :placeholder="__('Петров')" autocomplete="off" />
+            <FormControl :label="__('Имя') + ' *'" v-model="form.first_name" :placeholder="__('Иван')" autocomplete="off" />
             <FormControl :label="__('Отчество')" v-model="form.middle_name" :placeholder="__('Иванович')" autocomplete="off" />
           </div>
           <!-- Email НЕ спрашиваем: корпоративная почта создаётся автоматически по имени/фамилии

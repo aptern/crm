@@ -8,7 +8,7 @@
         >
           <MultipleAvatar :avatars="assignees" />
         </component>
-        <Button v-else :label="__('Assign To')" />
+        <Button v-else :label="__('Назначить исполнителя')" iconLeft="plus" />
       </div>
     </template>
     <template #body="{ isOpen }">

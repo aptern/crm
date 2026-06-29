@@ -62,7 +62,7 @@
   <SimpleModal v-model="showCreate" :title="__('Добавить отдел')">
     <div class="flex flex-col gap-3">
       <FormControl
-        :label="__('Название')"
+        :label="__('Название') + ' *'"
         v-model="createForm.name"
         :placeholder="__('Например, Дизайн')"
       />
@@ -71,6 +71,7 @@
         :label="__('Родительский отдел')"
         :options="parentOptions"
         :placeholder="__('Выберите отдел…')"
+        :description="__('Оставьте пустым — отдел верхнего уровня')"
         v-model="createForm.parent"
       />
       <FormControl
@@ -78,6 +79,7 @@
         :label="__('Руководитель')"
         :options="headOptions"
         :placeholder="__('Выберите руководителя…')"
+        :description="__('Можно назначить позже')"
         v-model="createForm.head"
       />
       <ErrorMessage v-if="createError" :message="createError" />

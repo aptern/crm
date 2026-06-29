@@ -126,9 +126,13 @@
         </div>
         <div
           v-else-if="getRow(itemName, titleField).label"
-          class="truncate text-base"
+          class="min-w-0 truncate text-base"
         >
-          {{ getRow(itemName, titleField).label }}
+          <!-- NACIFRAH (ux-critique [d_leads] 43): полное имя по наведению — заголовки
+               карточек лидов/сделок обрезаются, тултип показывает полное значение. -->
+          <Tooltip :text="getRow(itemName, titleField).label">
+            <div class="truncate">{{ getRow(itemName, titleField).label }}</div>
+          </Tooltip>
         </div>
         <div v-else class="text-ink-gray-4">{{ __('No Title') }}</div>
       </div>
