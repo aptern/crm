@@ -57,7 +57,22 @@
                 <div class="mt-0.5 max-w-xs text-xs text-ink-gray-5">{{ s.desc }}</div>
               </div>
             </td>
-            <td class="px-3 py-2 text-ink-gray-7">{{ m.label }}</td>
+            <!-- NACIFRAH (заказчик, мясистое): мастер-чекбокс строки — вкл/выкл ВСЕ права
+                 модуля одним кликом (indeterminate при частичном). -->
+            <td class="px-3 py-2 text-ink-gray-7">
+              <label class="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  class="cursor-pointer"
+                  :checked="rowState(s, m) === 'all'"
+                  :indeterminate.prop="rowState(s, m) === 'some'"
+                  :disabled="s.fixed || !m.exists || saving"
+                  :title="__('Включить или выключить все права на модуль сразу')"
+                  @change="toggleRow(s, m, $event.target.checked)"
+                />
+                {{ m.label }}
+              </label>
+            </td>
             <td v-for="t in data.types" :key="t" class="px-3 py-2 text-center">
               <input
                 type="checkbox"
@@ -246,6 +261,39 @@ async function setPolicy(value) {
   } catch (e) {
     policy.value = prev
     toast.error(e?.messages?.[0] || __('Не удалось сохранить'))
+  }
+}
+
+// мастер-чекбокс строки: состояние all/some/none по всем типам ячейки
+function rowState(s, m) {
+  const cell = data.value?.matrix?.[s.value]?.[m.key]
+  if (!cell) return 'none'
+  const vals = data.value.types.map((t) => !!cell[t])
+  if (vals.every(Boolean)) return 'all'
+  if (vals.some(Boolean)) return 'some'
+  return 'none'
+}
+
+async function toggleRow(s, m, checked) {
+  if (s.fixed || !m.exists) return
+  const role = s.value
+  const module = m.key
+  const cell = data.value.matrix[role][module]
+  const prev = { ...cell }
+  // оптимистично: ставим все типы строки
+  data.value.types.forEach((t) => {
+    cell[t] = checked ? 1 : 0
+  })
+  saving.value = true
+  try {
+    await call(napi('hr.set_permission_row'), { role, module, value: checked ? 1 : 0 })
+  } catch (e) {
+    data.value.types.forEach((t) => {
+      cell[t] = prev[t]
+    })
+    toast.error(e?.messages?.[0] || __('Не удалось изменить права'))
+  } finally {
+    saving.value = false
   }
 }
 
