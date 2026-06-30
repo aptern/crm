@@ -49,6 +49,18 @@
             <td class="px-3 py-2 align-top text-ink-gray-8">
               <div v-if="i === 0">
                 <div class="flex items-center gap-2 font-medium">
+                  <!-- NACIFRAH (заказчик, мясистое): мастер подписанта — полный доступ
+                       группе ко всему / снять всё одним кликом (indeterminate при частичном). -->
+                  <input
+                    v-if="!s.fixed"
+                    type="checkbox"
+                    class="cursor-pointer"
+                    :checked="subjectState(s) === 'all'"
+                    :indeterminate.prop="subjectState(s) === 'some'"
+                    :disabled="saving"
+                    :title="__('Полный доступ группе ко всем модулям / снять всё')"
+                    @change="toggleSubject(s, $event.target.checked)"
+                  />
                   {{ s.label }}
                   <span class="rounded bg-surface-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-6">
                     {{ s.members }} {{ __('чел.') }}
@@ -261,6 +273,51 @@ async function setPolicy(value) {
   } catch (e) {
     policy.value = prev
     toast.error(e?.messages?.[0] || __('Не удалось сохранить'))
+  }
+}
+
+// мастер-чекбокс подписанта: состояние all/some/none по ВСЕМ модулям × типам группы
+function subjectState(s) {
+  if (!data.value) return 'none'
+  let all = true
+  let some = false
+  let any = false
+  for (const m of data.value.modules) {
+    if (!m.exists) continue
+    const cell = data.value.matrix[s.value]?.[m.key]
+    if (!cell) continue
+    for (const t of data.value.types) {
+      any = true
+      if (cell[t]) some = true
+      else all = false
+    }
+  }
+  if (!any) return 'none'
+  return all ? 'all' : some ? 'some' : 'none'
+}
+
+async function toggleSubject(s, checked) {
+  if (s.fixed) return
+  const role = s.value
+  // снимок для отката + оптимистичная установка по существующим модулям
+  const snap = {}
+  data.value.modules.forEach((m) => {
+    if (!m.exists) return
+    snap[m.key] = { ...data.value.matrix[role][m.key] }
+    data.value.types.forEach((t) => {
+      data.value.matrix[role][m.key][t] = checked ? 1 : 0
+    })
+  })
+  saving.value = true
+  try {
+    await call(napi('hr.set_permission_subject'), { role, value: checked ? 1 : 0 })
+  } catch (e) {
+    Object.keys(snap).forEach((k) => {
+      data.value.matrix[role][k] = snap[k]
+    })
+    toast.error(e?.messages?.[0] || __('Не удалось изменить права'))
+  } finally {
+    saving.value = false
   }
 }
 
