@@ -431,7 +431,8 @@ const breadcrumbs = computed(() => {
 
 const title = computed(() => {
   let t = doctypeMeta.value?.title_field || 'name'
-  return doc.value?.[t] || props.leadId
+  // C (заказчик): ручное название имеет приоритет (lead_name остаётся авто-форматом)
+  return doc.value?.nacifrah_lead_title || doc.value?.[t] || props.leadId
 })
 
 // NACIFRAH (заказчик, C): ручное переименование лида. Бэкенд ставит lead_name + флаг
@@ -440,8 +441,7 @@ const showRename = ref(false)
 const renameValue = ref('')
 const renameBusy = ref(false)
 function openRename() {
-  // при ручном имени показываем его; в авто-режиме — текущее имя как стартовое
-  renameValue.value = doc.value?.nacifrah_manual_name ? doc.value?.lead_name || '' : ''
+  renameValue.value = doc.value?.nacifrah_lead_title || ''
   showRename.value = true
 }
 async function saveRename() {

@@ -140,9 +140,13 @@
     <template #fields="{ fieldName, itemName }">
       <!-- NACIFRAH (заказчик, B): не дублируем в теле карточки организацию/контакты/телефон/
            email (организация = в названии, телефон/email = в иконках справа). Оставляем
-           ответственного и сумму. -->
+           ответственного и сумму.
+           ВАЖНО: v-show (а не v-if) — у слота #fields в KanbanView есть fallback, который при
+           ПУСТОМ слоте рендерит СЫРОЕ значение поля (fmtKanbanVal). v-if=false → пустой слот →
+           fallback показывал бы скрытое поле (телефон/дату). v-show всегда держит элемент в
+           DOM (fallback не срабатывает), а скрывает через display:none (без зазора flex-gap). -->
       <div
-        v-if="
+        v-show="
           getRow(itemName, fieldName).label &&
           !['creation', 'mobile_no', 'phone', 'email', 'organization', 'lead_name', 'website'].includes(
             fieldName,
